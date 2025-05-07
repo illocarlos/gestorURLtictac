@@ -1,0 +1,28 @@
+{
+  "name": "gestorurl",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@cloudinary/url-gen": "^1.21.0",
+    "firebase": "^11.6.1",
+    "nanoid": "^5.1.5",
+    "pinia": "^3.0.2",
+    "uid": "^2.0.2",
+    "vue": "^3.5.13",
+    "vuefire": "^3.2.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.5",
+    "@vitejs/plugin-vue": "^5.2.3",
+    "autoprefixer": "^10.4.15",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.3",
+    "vite": "^6.3.5"
+  }
+}
