@@ -2,6 +2,10 @@
 import { ref } from 'vue';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { useUrlStore } from '../stores/url'; // Importamos el store
+
+// Obtenemos el store de URLs
+const urlStore = useUrlStore();
 
 // Estados
 const name = ref('');
@@ -28,7 +32,8 @@ const submitForm = async () => {
     original: originalUrl.value.trim(),
     createdAt: new Date(),
     status: 'pending',
-    visits: 0
+    visits: 0,
+    visitDetails: [] // Añadimos array para almacenar detalles de visita
   };
 
   // Enviar a Firebase
@@ -39,6 +44,16 @@ const submitForm = async () => {
     const docRef = await addDoc(collection(db, 'urls'), newUrl);
 
     console.log('Documento añadido con ID:', docRef.id);
+
+    // Importante: Añadir la URL recién creada al store para actualización dinámica
+    // Creamos un objeto completo con id para añadirlo al store
+    const newUrlWithId = {
+      id: docRef.id,
+      ...newUrl
+    };
+
+    // Añadimos al store en memoria para que se muestre sin recargar
+    urlStore.urls.unshift(newUrlWithId);
 
     // Éxito
     successMsg.value = '¡URL añadida correctamente!';
@@ -66,13 +81,13 @@ const submitForm = async () => {
     <form @submit.prevent="submitForm">
 
       <div class="mb-4">
-        <label for="name" class="block text-sm font-medium text-gray-700 mb-1 text-white">Nombre del sitio</label>
-        <input type="text" id="name" v-model="site_name" placeholder="Mi sitio web" required
+        <label for="site_name" class="block text-sm font-medium text-gray-700 mb-1 text-white">Nombre del sitio</label>
+        <input type="text" id="site_name" v-model="site_name" placeholder="Mi sitio web" required
           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
       </div>
       <div class="mb-4">
-        <label for="name" class="block text-sm font-medium text-gray-700 mb-1 text-white">¿Quien la maqueto?</label>
-        <input type="text" id="name" v-model="name" placeholder="Mi sitio web" required
+        <label for="dev_name" class="block text-sm font-medium text-gray-700 mb-1 text-white">¿Quien la maqueto?</label>
+        <input type="text" id="dev_name" v-model="name" placeholder="Nombre del desarrollador" required
           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
       </div>
 
@@ -114,6 +129,7 @@ const submitForm = async () => {
   background: #BBF33A;
   transition: 0.4s ease;
 }
+
 .button-custom:hover {
   color: white;
 

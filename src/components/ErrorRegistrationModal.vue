@@ -117,20 +117,21 @@ const submitAllErrors = async () => {
 
 <template>
   <div v-if="isOpen"
-    class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
-    <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+    class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 ">
+    <div
+      class="relative mx-auto p-5  w-full max-w-md shadow-lg rounded-md  bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
       <!-- Botón X para cerrar (arriba a la derecha) -->
       <button @click="emit('close')"
-        class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+        class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 focus:outline-none button-custom-close ">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
 
       <div class="mt-3 text-center">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">Registrar errores</h3>
+        <h3 class="text-lg leading-6 font-medium text-white">Registrar errores</h3>
         <div class="mt-2 px-7 py-3">
-          <p class="text-sm text-gray-500 mb-4">
+          <p class="text-sm text-gray-500 mb-4 text-white">
             Por favor, indique los errores encontrados en esta URL.
           </p>
 
@@ -143,7 +144,7 @@ const submitAllErrors = async () => {
               <input type="text" v-model="newErrorMessage" placeholder="Describe el error"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
             </div>
-            
+
             <!-- Sección de carga de imágenes -->
             <div class="mb-3">
               <label class="block text-sm font-medium text-gray-700 text-left mb-1">
@@ -152,15 +153,15 @@ const submitAllErrors = async () => {
               <input type="file" @change="handleFileChange" accept="image/*"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
             </div>
-            
+
             <!-- Vista previa de la imagen -->
             <div v-if="previewUrl" class="mb-3">
               <img :src="previewUrl" alt="Vista previa" class="max-h-32 mx-auto rounded-md" />
             </div>
-            
+
             <!-- Botón para añadir error a la lista -->
-            <button @click="addErrorToQueue" 
-              class="w-full mb-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm"
+            <button @click="addErrorToQueue"
+              class="w-full mb-2 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800 cursor-pointer transition-all hover:text-black text-white px-4 py-2 rounded-md text-md font-bold"
               :disabled="!newErrorMessage.trim() || isAddingError || uploadingStatus">
               <span v-if="isAddingError || uploadingStatus">
                 {{ uploadingStatus ? 'Subiendo imagen...' : 'Añadiendo...' }}
@@ -180,18 +181,16 @@ const submitAllErrors = async () => {
                 <div class="flex justify-between items-start">
                   <div class="flex-1">
                     <p class="text-sm text-gray-700">{{ error.text }}</p>
-                    
+
                     <!-- Mostrar imagen (solo previsualización durante esta sesión) -->
                     <div v-if="error.imageUrl || error.imagePreview" class="mt-1">
-                      <img :src="error.imageUrl || error.imagePreview" alt="Imagen de error" 
-                        class="h-20 rounded-md" />
+                      <img :src="error.imageUrl || error.imagePreview" alt="Imagen de error" class="h-20 rounded-md" />
                     </div>
                   </div>
                   <button @click="removeError(index)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                      viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M6 18L18 6M6 6l12 12" />
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                      stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
@@ -200,8 +199,8 @@ const submitAllErrors = async () => {
           </div>
 
           <!-- Botón para enviar todos los errores con estado de carga -->
-          <button @click="submitAllErrors" 
-            class="w-full mt-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 text-sm"
+          <button @click="submitAllErrors"
+            class="w-full mt-2 button-custom hover:cursor-pointer text-white px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 text-md font-bold"
             :disabled="errors.length === 0 || isSubmitting">
             {{ isSubmitting ? 'Registrando errores...' : 'Registrar todos los errores' }}
           </button>
@@ -212,4 +211,17 @@ const submitAllErrors = async () => {
 </template>
 
 <style scoped>
+.button-custom {
+  color: black;
+  background: #BBF33A;
+  transition: 0.4s ease;
+}
+
+.button-custom:hover {
+  color: white;
+
+}
+.button-custom-close{
+  color:#BBF33A;
+}
 </style>

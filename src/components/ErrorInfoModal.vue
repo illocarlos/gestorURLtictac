@@ -36,7 +36,7 @@ const closeZoom = () => {
 
 <template>
   <div v-if="isOpen && url"
-    class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+    class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-600">
     <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
       <!-- Botón X para cerrar (arriba a la derecha) -->
       <button @click="emit('close')"
@@ -52,23 +52,19 @@ const closeZoom = () => {
         </h3>
         <div class="mt-2 px-7 py-3">
           <ul class="text-left mt-4 mb-4 space-y-4">
-            <li v-for="(message, index) in url.errorMessages" :key="index"
-              class="p-3 border rounded-lg bg-gray-50">
+            <li v-for="(message, index) in url.errorMessages" :key="index" class="p-3 border rounded-lg bg-gray-50">
               <!-- Mensaje de texto -->
               <p class="text-sm text-gray-700 mb-2">
                 {{ typeof message === 'object' ? message.text : message }}
               </p>
-              
+
               <!-- Imagen si existe -->
               <div v-if="typeof message === 'object' && (message.imageUrl || message.imagePreview)" class="mt-2">
                 <!-- Imagen con cursor para indicar que es clickeable -->
-                <img 
-                  :src="getDisplayUrl(message.imageUrl, message.imagePreview)" 
-                  alt="Imagen del error"
+                <img :src="getDisplayUrl(message.imageUrl, message.imagePreview)" alt="Imagen del error"
                   class="max-w-full rounded-md mx-auto max-h-64 cursor-pointer hover:opacity-90 transition-opacity"
-                  @click="openZoom(message.imageUrl, message.imagePreview)" 
-                />
-                
+                  @click="openZoom(message.imageUrl, message.imagePreview)" />
+
                 <!-- Indicador de que se puede ampliar -->
                 <span class="text-xs text-blue-600 block mt-1">
                   Haz clic en la imagen para ampliarla
@@ -87,9 +83,9 @@ const closeZoom = () => {
       </div>
     </div>
   </div>
-  
+
   <!-- Modal para ver la imagen ampliada -->
-  <div v-if="isZooming" 
+  <div v-if="isZooming"
     class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[60] cursor-zoom-out"
     @click="closeZoom">
     <div class="relative max-w-[90vw] max-h-[90vh] overflow-auto">
@@ -100,15 +96,10 @@ const closeZoom = () => {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
-      
+
       <!-- Imagen ampliada -->
-      <img 
-        :src="zoomedImageSrc" 
-        alt="Imagen ampliada" 
-        class="max-w-full max-h-[90vh] object-contain" 
-        @click.stop
-      />
-      
+      <img :src="zoomedImageSrc" alt="Imagen ampliada" class="max-w-full max-h-[90vh] object-contain" @click.stop />
+
       <!-- Instrucciones -->
       <div class="absolute bottom-4 left-0 right-0 text-center text-white text-sm">
         Haz clic fuera de la imagen para cerrar
@@ -124,5 +115,15 @@ const closeZoom = () => {
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+.button-custom {
+  color: black;
+  background: #BBF33A;
+  transition: 0.4s ease;
+}
+
+.button-custom:hover {
+  color: white;
+
 }
 </style>
