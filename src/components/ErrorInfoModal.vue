@@ -36,18 +36,19 @@ const closeZoom = () => {
 
 <template>
   <div v-if="isOpen && url"
-    class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-600">
-    <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+    class="fixed inset-0 bg-black bg-opacity-60 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+    <div
+      class="relative mx-auto p-5  w-full max-w-xl shadow-lg rounded-md bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
       <!-- Botón X para cerrar (arriba a la derecha) -->
       <button @click="emit('close')"
-        class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 focus:outline-none">
+        class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 focus:outline-none button-custom-close ">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
 
       <div class="mt-3 text-center">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 text-white">
           Errores encontrados en: {{ url.name }}
         </h3>
         <div class="mt-2 px-7 py-3">
@@ -75,7 +76,7 @@ const closeZoom = () => {
 
           <div class="flex justify-end mt-4">
             <button @click="emit('close')"
-              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              class="button-custom  font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ">
               Cerrar
             </button>
           </div>
@@ -125,5 +126,9 @@ const closeZoom = () => {
 .button-custom:hover {
   color: white;
 
+}
+
+.button-custom-close {
+  color: #BBF33A;
 }
 </style>

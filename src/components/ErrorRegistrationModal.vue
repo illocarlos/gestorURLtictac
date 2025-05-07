@@ -117,9 +117,9 @@ const submitAllErrors = async () => {
 
 <template>
   <div v-if="isOpen"
-    class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 ">
+    class="fixed inset-0 bg-black bg-opacity-60 overflow-y-auto h-full w-full flex items-center justify-center z-50 ">
     <div
-      class="relative mx-auto p-5  w-full max-w-md shadow-lg rounded-md  bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
+      class="relative mx-auto p-5  w-full max-w-xl shadow-lg rounded-md  bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
       <!-- Botón X para cerrar (arriba a la derecha) -->
       <button @click="emit('close')"
         class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 focus:outline-none button-custom-close ">
