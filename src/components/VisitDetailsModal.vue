@@ -390,7 +390,7 @@ const visitStats = computed(() => {
     <div
       class="relative mx-auto p-5 border w-full max-w-5xl shadow-lg rounded-md bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
       <!-- Botón X para cerrar (arriba a la derecha) -->
-      <button @click="emit('close')" class="absolute top-3 right-3 text-white hover:text-gray-200 focus:outline-none">
+      <button @click="emit('close')" class="absolute top-3 right-3 url-custom focus:outline-none">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -398,8 +398,8 @@ const visitStats = computed(() => {
 
       <div class="mt-3">
         <h3 class="text-lg leading-6 font-medium text-white mb-4">
-          visitas a la url :  <a :href="url.original" target="_blank"
-            class="text-indigo-600 hover:text-indigo-900">{{ url.original }}</a> <span class="text-lime-400">
+          visitas a la url : <a :href="url.original" target="_blank" class="url-custom">{{ url.original }}</a> <span
+            class="text-lime-400">
 
           </span>
         </h3>
@@ -643,6 +643,9 @@ const visitStats = computed(() => {
   color: black;
   background: #BBF33A;
   transition: 0.4s ease;
+}
+.url-custom{
+  color: #BBF33A;
 }
 
 .button-custom:hover {
