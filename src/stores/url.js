@@ -52,6 +52,7 @@ export const useUrlStore = defineStore('url', () => {
             const docRef = await addDoc(collection(db, 'urls'), {
                 name: urlData.name,
                 original: urlData.original,
+                site_name: urlData.site_name || '',
                 createdAt: new Date(),
                 status: 'pending', // 'pending', 'approved', 'rejected'
                 errorMessages: [],
@@ -64,6 +65,7 @@ export const useUrlStore = defineStore('url', () => {
                 id: docRef.id,
                 name: urlData.name,
                 original: urlData.original,
+                site_name: urlData.site_name || '',
                 createdAt: new Date(),
                 status: 'pending',
                 errorMessages: [],
@@ -154,6 +156,120 @@ export const useUrlStore = defineStore('url', () => {
         }
     }
 
+
+
+    // Actualización de la función recordVisit en el useUrlStore.js
+
+    // NUEVA función para registrar visitas con consentimiento e información detallada
+    // NUEVA función para registrar visitas con consentimiento e información detallada
+    // NUEVA función para registrar visitas con consentimiento e información detallada
+    async function recordVisit(id, visitorInfo = null) {
+        loading.value = true;
+        error.value = null;
+        try {
+            const urlRef = doc(db, 'urls', id);
+            const urlDoc = await getDoc(urlRef);
+
+            if (!urlDoc.exists()) {
+                throw new Error('La URL no existe');
+            }
+
+            const urlData = urlDoc.data();
+
+            // Función para limpiar valores undefined
+            const cleanUndefined = (obj) => {
+                if (obj === undefined || obj === null) return null;
+
+                // Para arrays
+                if (Array.isArray(obj)) {
+                    return obj.map(item => cleanUndefined(item));
+                }
+
+                // Para objetos
+                if (typeof obj === 'object') {
+                    const result = {};
+                    for (const key in obj) {
+                        result[key] = cleanUndefined(obj[key]);
+                    }
+                    return result;
+                }
+
+                // Para valores primitivos
+                return obj;
+            };
+
+            // Recopilar información básica sobre la visita
+            const visitData = {
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent || null,
+                referrer: document.referrer || 'Directo',
+                screenSize: `${window.screen.width}x${window.screen.height}`,
+                // Valores por defecto que serán reemplazados si hay información del visitante
+                country: 'Desconocido',
+                region: 'Desconocido',
+                city: 'Desconocido',
+                ip: '0.0.0.0',
+            };
+
+            // Añadir toda la información del visitante si está disponible
+            if (visitorInfo) {
+                // Información básica
+                if (visitorInfo.email) visitData.email = visitorInfo.email;
+                if (visitorInfo.consentTimestamp) visitData.consentTimestamp = visitorInfo.consentTimestamp;
+                if (visitorInfo.acceptedTerms !== undefined) visitData.acceptedTerms = visitorInfo.acceptedTerms;
+
+                // Información de ubicación
+                if (visitorInfo.ip) visitData.ip = visitorInfo.ip;
+                if (visitorInfo.country) visitData.country = visitorInfo.country;
+                if (visitorInfo.region) visitData.region = visitorInfo.region;
+                if (visitorInfo.city) visitData.city = visitorInfo.city;
+                if (visitorInfo.latitude) visitData.latitude = visitorInfo.latitude;
+                if (visitorInfo.longitude) visitData.longitude = visitorInfo.longitude;
+                if (visitorInfo.isp) visitData.isp = visitorInfo.isp;
+
+                // Información detallada del navegador si está disponible
+                if (visitorInfo.browserInfo) {
+                    // Asegurarse de que no hay valores undefined
+                    visitData.browserInfo = cleanUndefined(visitorInfo.browserInfo);
+                }
+
+                // Log para debug
+                console.log("Guardando visita con información detallada:", visitData);
+            }
+
+            // Limpiar una última vez para asegurarnos de que no hay valores undefined
+            const cleanVisitData = cleanUndefined(visitData);
+
+            // Actualizar el documento con la nueva visita
+            await updateDoc(urlRef, {
+                visits: (urlData.visits || 0) + 1,
+                visitDetails: arrayUnion(cleanVisitData)
+            });
+
+            // Actualizar la copia local
+            const url = urls.value.find(u => u.id === id);
+            if (url) {
+                // Incrementar contador
+                url.visits = (url.visits || 0) + 1;
+
+                // Asegurarnos de que visitDetails existe
+                if (!url.visitDetails) {
+                    url.visitDetails = [];
+                }
+
+                // Añadir los detalles de la visita
+                url.visitDetails.push(cleanVisitData);
+            }
+
+            return true;
+        } catch (e) {
+            console.error('Error al registrar visita:', e);
+            error.value = `Error al registrar visita: ${e.message}`;
+            return false;
+        } finally {
+            loading.value = false;
+        }
+    }
     // Función modificada para registrar información detallada de visitas
     async function incrementVisits(id, visitorInfo = null) {
         try {
@@ -356,6 +472,7 @@ export const useUrlStore = defineStore('url', () => {
         approveUrl,
         rejectUrl,
         incrementVisits,
+        recordVisit, // Nuevo método para registrar visitas con consentimiento
         openModal,
         closeModal,
         addErrorMessage,

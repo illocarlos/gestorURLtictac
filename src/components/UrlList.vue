@@ -4,10 +4,16 @@ import { useUrlStore } from '../stores/url';
 import ErrorRegistrationModal from './ErrorRegistrationModal.vue';
 import ErrorInfoModal from './ErrorInfoModal.vue';
 import VisitorAuthComponent from './VisitDetailsModal.vue';
+import VisitConsentModal from './VisitConsentModal.vue';
+import VisitDetailsModal from './VisitDetailsModal.vue';
 
 const urlStore = useUrlStore();
 const showInfoModal = ref(false);
+const showVisitConsentModal = ref(false);
+const showVisitDetailsModal = ref(false);
 const selectedUrlForInfo = ref(null);
+const selectedUrlForVisit = ref(null);
+const selectedUrlForDetails = ref(null);
 const visitorAuthRef = ref(null);
 
 onMounted(() => {
@@ -58,11 +64,44 @@ const truncateUrl = (url) => {
     return url.length > 40 ? url.substring(0, 37) + '...' : url;
 };
 
-const visitUrl = (url) => {
-    // Usar el componente VisitorAuth para gestionar la autenticación
-    visitorAuthRef.value.visitUrl(url);
+// Función para abrir el modal de consentimiento de visita
+const openVisitConsentModal = (url) => {
+    selectedUrlForVisit.value = url;
+    showVisitConsentModal.value = true;
 };
 
+// Función para cerrar el modal de consentimiento
+const closeVisitConsentModal = () => {
+    showVisitConsentModal.value = false;
+    selectedUrlForVisit.value = null;
+};
+
+// Nueva función para abrir el modal de detalles de visitas
+const openVisitDetailsModal = (url) => {
+    selectedUrlForDetails.value = url;
+    showVisitDetailsModal.value = true;
+};
+
+// Función para cerrar el modal de detalles de visitas
+const closeVisitDetailsModal = () => {
+    showVisitDetailsModal.value = false;
+    selectedUrlForDetails.value = null;
+};
+
+const handleVisitConfirmed = async (data) => {
+    try {
+        // Extraer la url y la información del visitante
+        const { url, visitorInfo } = data;
+
+ 
+
+        // Usar la función recordVisit del store con la información adicional
+        await urlStore.recordVisit(url.id, visitorInfo);
+
+    } catch (error) {
+        console.error('Error al registrar la visita:', error);
+    }
+};
 const approveUrl = async (id) => {
     await urlStore.approveUrl(id);
 };
@@ -116,8 +155,7 @@ const submitErrors = async () => {
     urlStore.closeModal();
     // Actualizar la lista después de enviar errores
     loadUrls();
-};
-</script>
+};</script>
 
 <template>
     <div class="bg-white shadow rounded-lg p-6 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
@@ -175,7 +213,7 @@ const submitErrors = async () => {
                                     <div class="text-xs text-gray-500">{{ url.site_name }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <a href="#" @click.prevent="visitUrl(url)"
+                                    <a href="#" @click.prevent="openVisitConsentModal(url)"
                                         class="text-indigo-600 hover:text-indigo-900 truncate block max-w-xs">
                                         {{ truncateUrl(url.original) }}
                                     </a>
@@ -195,18 +233,17 @@ const submitErrors = async () => {
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    <!-- Número de visitas clickeable para ver detalles -->
-                                    <span
-                                        @click="url.visitDetails && url.visitDetails.length > 0 ? openInfoModal(url) : null"
-                                        class="font-medium"
-                                        :class="{ 'text-indigo-600 hover:text-indigo-900 cursor-pointer hover:underline': url.visitDetails && url.visitDetails.length > 0 }">
+                                    <!-- Número de visitas clickeable para ver detalles completos -->
+                                    <span @click="openVisitDetailsModal(url)"
+                                        class="font-medium text-indigo-600 hover:text-indigo-900 cursor-pointer hover:underline">
                                         {{ url.visits || 0 }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <div class="flex space-x-3">
-                                        <button @click="visitUrl(url)" class="text-indigo-600 hover:text-indigo-900"
-                                            title="Visitar">
+                                        <!-- Botón del ojo - Modificado para abrir el modal de consentimiento -->
+                                        <button @click="openVisitConsentModal(url)"
+                                            class="text-indigo-600 hover:text-indigo-900" title="Visitar URL">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                                 viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -231,7 +268,7 @@ const submitErrors = async () => {
                                                     d="M6 18L18 6M6 6l12 12" />
                                             </svg>
                                         </button>
-                                        <!-- Botón de información -->
+                                        <!-- Botón de información de errores -->
                                         <button v-if="url.errorMessages && url.errorMessages.length > 0"
                                             @click="openInfoModal(url)" class="text-blue-600 hover:text-blue-900"
                                             title="Ver errores">
@@ -259,10 +296,16 @@ const submitErrors = async () => {
             @close="urlStore.closeModal" @add-error="addError" @remove-error="removeError"
             @submit-errors="submitErrors" />
 
+        <!-- Modal para ver errores -->
         <ErrorInfoModal :is-open="showInfoModal" :url="selectedUrlForInfo" @close="closeInfoModal" />
 
-        <!-- Componente de autenticación para visitantes -->
-        <VisitorAuthComponent ref="visitorAuthRef" />
+        <!-- Modal de consentimiento para visitar URLs -->
+        <VisitConsentModal :is-open="showVisitConsentModal" :url="selectedUrlForVisit" @close="closeVisitConsentModal"
+            @visit-confirmed="handleVisitConfirmed" />
+
+        <!-- Nuevo modal para detalles completos de visitas -->
+        <VisitDetailsModal :is-open="showVisitDetailsModal" :url="selectedUrlForDetails"
+            @close="closeVisitDetailsModal" />
     </div>
 </template>
 
