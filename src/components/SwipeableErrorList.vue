@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue';
 import useImages from '../composables/useImages';
 
 defineProps({
@@ -28,6 +28,10 @@ const REMOVE_THRESHOLD = 180; // Píxeles necesarios para eliminar automáticame
 
 // Para la animación de eliminación
 const itemsToRemove = ref(new Set());
+
+// Para el tutorial de deslizamiento
+const showSwipeTutorial = ref(true);
+const hasSwiped = ref(false);
 
 // Función para obtener la URL de la imagen
 const getDisplayUrl = (imageUrl, fallbackUrl) => {
@@ -78,6 +82,9 @@ const handleTouchMove = (event, index) => {
   
   // Solo permitir deslizamiento hacia la izquierda (valores negativos)
   if (diff < 0) {
+    // Registrar que el usuario ha hecho swipe al menos una vez
+    hasSwiped.value = true;
+    
     // Cambiar el color de fondo dinámicamente según la cantidad de deslizamiento
     const swipeProgress = Math.min(Math.abs(diff) / REMOVE_THRESHOLD, 1);
     
@@ -154,6 +161,9 @@ const handleMouseMove = (event, index) => {
   
   // Solo permitir deslizamiento hacia la izquierda (valores negativos)
   if (diff < 0) {
+    // Registrar que el usuario ha hecho swipe al menos una vez
+    hasSwiped.value = true;
+    
     // Cambiar el color de fondo dinámicamente según la cantidad de deslizamiento
     const swipeProgress = Math.min(Math.abs(diff) / REMOVE_THRESHOLD, 1);
     
@@ -296,17 +306,63 @@ const handleDocumentClick = (event) => {
   }
 };
 
+// Ocultar el tutorial después de un tiempo o cuando el usuario haga swipe
+const hideTutorialAfterDelay = () => {
+  setTimeout(() => {
+    showSwipeTutorial.value = false;
+  }, 8000); // Ocultar después de 8 segundos
+};
+
 // Configurar y limpiar event listeners
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick);
+  hideTutorialAfterDelay();
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleDocumentClick);
 });
+
+// Observar cuando el usuario haga swipe para ocultar el tutorial
+watch(hasSwiped, (newValue) => {
+  if (newValue) {
+    showSwipeTutorial.value = false;
+  }
+});
 </script>
 
 <template>
+  <!-- Tutorial de deslizamiento (se muestra al principio) -->
+  <div v-if="showSwipeTutorial && errorMessages.length > 0" class="swipe-tutorial mb-4 p-3 bg-blue-100 rounded-md flex items-center">
+    <div class="flex-shrink-0 mr-3">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div class="text-sm text-blue-700">
+      <strong>¡Consejo!</strong> Desliza los errores hacia la izquierda para eliminarlos. 
+      <div class="flex items-center mt-1">
+        <span class="w-5 h-5 bg-gray-200 flex items-center justify-center rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </span>
+   
+        <span class="w-5 h-5 bg-red-500 text-white flex items-center justify-center rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </span>
+             <span class="mx-2 text-gray-500">←</span>
+      </div>
+    </div>
+    <button @click="showSwipeTutorial = false" class="ml-auto text-blue-500 hover:text-blue-700 focus:outline-none">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
   <ul class="text-left mt-4 mb-4 space-y-4">
     <li v-for="(message, index) in errorMessages" :key="index" 
         class="swipeable-container relative overflow-hidden rounded-lg"
@@ -324,6 +380,16 @@ onBeforeUnmount(() => {
           </svg>
           <span class="text-sm mt-1">Soltar para eliminar</span>
         </div>
+      </div>
+      
+      <!-- Indicador visual de deslizamiento (aparece y desaparece) -->
+      <div class="swipe-indicator">
+        <div class="swipe-arrow-left">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </div>
+        <div class="swipe-text">Desliza para eliminar</div>
       </div>
       
       <!-- Contenido deslizable -->
@@ -362,6 +428,11 @@ onBeforeUnmount(() => {
       </div>
     </li>
   </ul>
+
+  <!-- Mensaje cuando no hay errores -->
+  <div v-if="errorMessages.length === 0" class="text-center py-4 text-gray-500">
+    No hay errores registrados para esta URL.
+  </div>
 
   <!-- Modal para ver la imagen ampliada -->
   <div v-if="isZooming"
@@ -446,5 +517,63 @@ onBeforeUnmount(() => {
   background-color: rgba(240, 240, 240, 0.6);
   padding: 2px 6px;
   border-radius: 10px;
+}
+
+/* Nuevos estilos para mejorar la UX */
+.swipe-tutorial {
+  animation: fadeInDown 0.5s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Indicador visual de swipe */
+.swipe-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  z-index: 0;
+  overflow: hidden;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.swipeable-container:hover .swipe-indicator {
+  opacity: 1;
+}
+
+.swipe-arrow-left {
+  color: #ef4444;
+  transform: scale(0.8);
+  animation: swipeLeftAnimation 2s infinite ease-in-out;
+  margin-right: 5px;
+}
+
+.swipe-text {
+  font-size: 12px;
+  color: #ef4444;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+@keyframes swipeLeftAnimation {
+  0%, 100% {
+    transform: translateX(0) scale(0.8);
+  }
+  50% {
+    transform: translateX(-10px) scale(0.8);
+  }
 }
 </style>
