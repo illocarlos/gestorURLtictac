@@ -1,13 +1,14 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import useImages from '../composables/useImages';
+import SwipeableErrorList from './SwipeableErrorList.vue';
 
-defineProps({
+const props = defineProps({
   isOpen: Boolean,
   url: Object
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'remove-error']);
 
 // Inicializar el composable
 const { getImageDisplayUrl } = useImages('error-images');
@@ -15,6 +16,18 @@ const { getImageDisplayUrl } = useImages('error-images');
 // Estado para controlar la imagen ampliada
 const zoomedImageSrc = ref(null);
 const isZooming = ref(false);
+
+// Copia local de los errores para manejar eliminaciones sin afectar el prop original
+const localErrorMessages = ref([]);
+
+// Observar cambios en las props para actualizar la copia local
+watch(() => props.url?.errorMessages, (newVal) => {
+  if (newVal) {
+    localErrorMessages.value = [...newVal];
+  } else {
+    localErrorMessages.value = [];
+  }
+}, { immediate: true, deep: true });
 
 // Función para obtener la URL de la imagen
 const getDisplayUrl = (imageUrl, fallbackUrl) => {
@@ -32,16 +45,31 @@ const closeZoom = () => {
   isZooming.value = false;
   zoomedImageSrc.value = null;
 };
+
+// Función para manejar la eliminación de un error
+const handleRemoveError = (index) => {
+  console.log(`ErrorInfoModal recibió evento remove-error para índice ${index}`);
+  
+  // Eliminar de la copia local para actualización inmediata en la UI
+  if (index >= 0 && index < localErrorMessages.value.length) {
+    localErrorMessages.value.splice(index, 1);
+  }
+  
+  // Emitir al componente padre para actualizar el store
+  if (props.url) {
+    emit('remove-error', { urlId: props.url.id, errorIndex: index });
+  }
+};
 </script>
 
 <template>
   <div v-if="isOpen && url"
     class="fixed inset-0 bg-black bg-opacity-60 overflow-y-auto h-full w-full flex items-center justify-center z-50">
     <div
-      class="relative mx-auto p-5  w-full max-w-xl shadow-lg rounded-md bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
+      class="relative mx-auto p-5 w-full max-w-xl shadow-lg rounded-md bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
       <!-- Botón X para cerrar (arriba a la derecha) -->
       <button @click="emit('close')"
-        class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 focus:outline-none button-custom-close ">
+        class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 focus:outline-none button-custom-close">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -52,31 +80,19 @@ const closeZoom = () => {
           Errores encontrados en: {{ url.name }}
         </h3>
         <div class="mt-2 px-7 py-3">
-          <ul class="text-left mt-4 mb-4 space-y-4">
-            <li v-for="(message, index) in url.errorMessages" :key="index" class="p-3 border rounded-lg bg-gray-50">
-              <!-- Mensaje de texto -->
-              <p class="text-sm text-gray-700 mb-2">
-                {{ typeof message === 'object' ? message.text : message }}
-              </p>
+          <!-- Componente SwipeableErrorList con la copia local de errores -->
+          <SwipeableErrorList 
+            :error-messages="localErrorMessages" 
+            @remove-error="handleRemoveError"
+          />
 
-              <!-- Imagen si existe -->
-              <div v-if="typeof message === 'object' && (message.imageUrl || message.imagePreview)" class="mt-2">
-                <!-- Imagen con cursor para indicar que es clickeable -->
-                <img :src="getDisplayUrl(message.imageUrl, message.imagePreview)" alt="Imagen del error"
-                  class="max-w-full rounded-md mx-auto max-h-64 cursor-pointer hover:opacity-90 transition-opacity"
-                  @click="openZoom(message.imageUrl, message.imagePreview)" />
-
-                <!-- Indicador de que se puede ampliar -->
-                <span class="text-xs text-blue-600 block mt-1">
-                  Haz clic en la imagen para ampliarla
-                </span>
-              </div>
-            </li>
-          </ul>
+          <div v-if="localErrorMessages.length === 0" class="text-white py-4 text-center">
+            No hay errores para mostrar.
+          </div>
 
           <div class="flex justify-end mt-4">
             <button @click="emit('close')"
-              class="button-custom  font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ">
+              class="button-custom font-medium py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2">
               Cerrar
             </button>
           </div>
@@ -125,7 +141,6 @@ const closeZoom = () => {
 
 .button-custom:hover {
   color: white;
-
 }
 
 .button-custom-close {

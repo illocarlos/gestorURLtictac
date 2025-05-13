@@ -156,13 +156,63 @@ export const useUrlStore = defineStore('url', () => {
         }
     }
 
+    // Función mejorada para eliminar un mensaje de error específico de una URL
+    async function removeErrorFromUrl(urlId, errorIndex) {
+        loading.value = true;
+        error.value = null;
 
+        console.log(`Store: Eliminando error índice ${errorIndex} de URL ${urlId}`);
 
-    // Actualización de la función recordVisit en el useUrlStore.js
+        try {
+            // Obtener la URL actual de Firestore
+            const urlRef = doc(db, 'urls', urlId);
+            const urlDoc = await getDoc(urlRef);
 
-    // NUEVA función para registrar visitas con consentimiento e información detallada
-    // NUEVA función para registrar visitas con consentimiento e información detallada
-    // NUEVA función para registrar visitas con consentimiento e información detallada
+            if (urlDoc.exists()) {
+                const urlData = urlDoc.data();
+                const errorMessages = [...(urlData.errorMessages || [])];
+
+                // Verificar que existe el error y el índice es válido
+                if (errorIndex >= 0 && errorIndex < errorMessages.length) {
+                    // Eliminar el error según el índice
+                    errorMessages.splice(errorIndex, 1);
+
+                    // Actualizar en Firestore
+                    await updateDoc(urlRef, { errorMessages });
+
+                    // Actualizar en el estado local
+                    const url = urls.value.find(u => u.id === urlId);
+                    if (url && url.errorMessages) {
+                        url.errorMessages.splice(errorIndex, 1);
+                    }
+
+                    // Si no quedan errores y el estado es "rejected", cambiar a "pending"
+                    if (errorMessages.length === 0 && urlData.status === 'rejected') {
+                        await updateDoc(urlRef, { status: 'pending' });
+
+                        // Actualizar en el estado local
+                        if (url) {
+                            url.status = 'pending';
+                        }
+                    }
+
+                    return true;
+                } else {
+                    console.warn(`Índice de error inválido: ${errorIndex}, total errores: ${errorMessages.length}`);
+                }
+            } else {
+                console.warn(`URL no encontrada: ${urlId}`);
+            }
+            return false;
+        } catch (e) {
+            console.error('Error al eliminar mensaje de error:', e);
+            error.value = e.message;
+            return false;
+        } finally {
+            loading.value = false;
+        }
+    }
+
     async function recordVisit(id, visitorInfo = null) {
         loading.value = true;
         error.value = null;
@@ -270,7 +320,7 @@ export const useUrlStore = defineStore('url', () => {
             loading.value = false;
         }
     }
-    // Función modificada para registrar información detallada de visitas
+
     async function incrementVisits(id, visitorInfo = null) {
         try {
             const urlRef = doc(db, 'urls', id)
@@ -472,7 +522,8 @@ export const useUrlStore = defineStore('url', () => {
         approveUrl,
         rejectUrl,
         incrementVisits,
-        recordVisit, // Nuevo método para registrar visitas con consentimiento
+        recordVisit,
+        removeErrorFromUrl, // Función mejorada para eliminar un error de una URL
         openModal,
         closeModal,
         addErrorMessage,

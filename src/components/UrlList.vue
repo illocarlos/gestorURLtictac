@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useUrlStore } from '../stores/url';
 import ErrorRegistrationModal from './ErrorRegistrationModal.vue';
 import ErrorInfoModal from './ErrorInfoModal.vue';
@@ -93,8 +93,6 @@ const handleVisitConfirmed = async (data) => {
         // Extraer la url y la información del visitante
         const { url, visitorInfo } = data;
 
- 
-
         // Usar la función recordVisit del store con la información adicional
         await urlStore.recordVisit(url.id, visitorInfo);
 
@@ -102,6 +100,7 @@ const handleVisitConfirmed = async (data) => {
         console.error('Error al registrar la visita:', error);
     }
 };
+
 const approveUrl = async (id) => {
     await urlStore.approveUrl(id);
 };
@@ -119,6 +118,18 @@ const openInfoModal = (url) => {
 const closeInfoModal = () => {
     showInfoModal.value = false;
     selectedUrlForInfo.value = null;
+};
+
+// Manejar la eliminación de un error desde el modal de información
+const handleRemoveError = async ({ urlId, errorIndex }) => {
+    await urlStore.removeErrorFromUrl(urlId, errorIndex);
+    // Si se eliminó el último error, podríamos considerar cerrar el modal
+    const url = urlStore.urls.find(u => u.id === urlId);
+    if (url && (!url.errorMessages || url.errorMessages.length === 0)) {
+        closeInfoModal();
+    }
+    // Opcional: recargar las URLs para asegurar datos actualizados
+    loadUrls();
 };
 
 // Formatear fecha/hora
@@ -155,7 +166,8 @@ const submitErrors = async () => {
     urlStore.closeModal();
     // Actualizar la lista después de enviar errores
     loadUrls();
-};</script>
+};
+</script>
 
 <template>
     <div class="bg-white shadow rounded-lg p-6 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
@@ -296,8 +308,10 @@ const submitErrors = async () => {
             @close="urlStore.closeModal" @add-error="addError" @remove-error="removeError"
             @submit-errors="submitErrors" />
 
-        <!-- Modal para ver errores -->
-        <ErrorInfoModal :is-open="showInfoModal" :url="selectedUrlForInfo" @close="closeInfoModal" />
+        <!-- Modal para ver errores - Modificado para incluir el handler de eliminación -->
+        <ErrorInfoModal :is-open="showInfoModal" :url="selectedUrlForInfo" 
+            @close="closeInfoModal" 
+            @remove-error="handleRemoveError" />
 
         <!-- Modal de consentimiento para visitar URLs -->
         <VisitConsentModal :is-open="showVisitConsentModal" :url="selectedUrlForVisit" @close="closeVisitConsentModal"
