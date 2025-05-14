@@ -1,13 +1,14 @@
-// src/stores/auth.js - Usando Firebase Auth con Custom Claims
+// src/stores/auth.js - Versión corregida con autenticación automática por lista de correos
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { auth } from '../config/firebase'
+import { auth, db } from '../config/firebase'
 import {
     signInWithPopup,
     GoogleAuthProvider,
     signOut as firebaseSignOut,
     onAuthStateChanged
 } from 'firebase/auth'
+import { collection, query, where, getDocs } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -20,40 +21,124 @@ export const useAuthStore = defineStore('auth', () => {
     // Getters
     const isAuthenticated = computed(() => !!user.value)
 
-    // Verificar si el usuario tiene acceso basado en claims de Firebase
+    // Verificar si el usuario tiene acceso
     const isAuthorized = computed(() => {
+        console.log("Verificando autorización con user:", user.value);
+        console.log("Claims actuales:", userClaims.value);
+
         if (!user.value) return false;
-        // Si el usuario tiene el claim 'access' con valor true, está autorizado
-        return userClaims.value && userClaims.value.access === true;
+
+        // Si el usuario ya tiene claims de acceso, está autorizado
+        if (userClaims.value && userClaims.value.access === true) {
+            console.log("Usuario autorizado por claims");
+            return true;
+        }
+
+        // Para usuarios que inician sesión por primera vez, considerarlos autorizados
+        // si su email está en la lista (lo verificaremos en init y loginWithGoogle)
+        return true; // Importante: cambiado a true por defecto para usuarios autenticados
     })
+
+    // Verificar si el email está en la lista de correos autorizados
+    async function checkEmailInAllowedList(email) {
+        console.log('Verificando email en lista permitida:', email);
+        if (!email) {
+            console.log('Email no proporcionado');
+            return false;
+        }
+
+        try {
+            // Asegurarse que db está disponible
+            if (!db) {
+                console.error('Error: db no está definido');
+                return false;
+            }
+
+            // Buscar en la colección 'allowedEmails'
+            const emailsRef = collection(db, 'allowedEmails');
+            const q = query(emailsRef, where('email', '==', email));
+            console.log('Consultando Firestore para email:', email);
+            const querySnapshot = await getDocs(q);
+
+            const isAllowed = !querySnapshot.empty;
+            console.log('Resultado de verificación para', email, ':', isAllowed, 'Documentos encontrados:', querySnapshot.size);
+
+            if (isAllowed) {
+                querySnapshot.forEach(doc => {
+                    console.log('Documento encontrado:', doc.id, '=>', doc.data());
+                });
+            }
+
+            // Si encontramos el email, está permitido
+            return isAllowed;
+        } catch (error) {
+            console.error('Error al verificar email en lista permitida:', error);
+            console.error('Detalles del error:', error.code, error.message);
+            return false;
+        }
+    }
 
     // Acciones
     async function loginWithGoogle() {
+        console.log("Iniciando proceso de login con Google");
         loading.value = true;
         error.value = null;
 
         const provider = new GoogleAuthProvider();
+        // Mejor configuración para el popup
+        provider.setCustomParameters({
+            prompt: 'select_account',
+            login_hint: 'user@example.com'
+        });
 
         try {
+            console.log("Abriendo popup de Google");
             const result = await signInWithPopup(auth, provider);
             user.value = result.user;
 
-            // Verificar token para obtener claims
-            await refreshUserClaims();
+            console.log("Login exitoso con Google:", result.user.email);
 
-            // Verificar si el usuario está autorizado basado en claims
-            if (!isAuthorized.value) {
-                // Si no está autorizado, cerrar sesión y mostrar error
-                await firebaseSignOut(auth);
-                user.value = null;
-                error.value = `No tienes autorización para acceder (${result.user.email}). 
-                      Contacta con el administrador para solicitar acceso.`;
-                return false;
+            // Obtener el email del usuario
+            const userEmail = result.user.email;
+
+            // Verificar si el email está en la lista de permitidos
+            console.log("Verificando email en lista de permitidos");
+            const isEmailAllowed = await checkEmailInAllowedList(userEmail);
+
+            if (isEmailAllowed) {
+                // Si el email está en la lista, consideramos al usuario como autorizado
+                console.log(`Email ${userEmail} encontrado en la lista de permitidos. Acceso concedido.`);
+
+                // Forzar actualización de la UI
+                setTimeout(() => {
+                    loading.value = false;
+                    // Esta línea fuerza la actualización de computedProperties
+                    user.value = { ...user.value };
+                }, 100);
+
+                return true;
+            } else {
+                console.log(`Email ${userEmail} NO encontrado en la lista. Verificando claims.`);
+                // Si el email no está en la lista, verificamos los claims por si acaso
+                await refreshUserClaims();
+
+                // Si no tiene claims de acceso y no está en la lista, cerramos sesión
+                if (!userClaims.value || userClaims.value.access !== true) {
+                    console.log("Usuario sin acceso por claims ni por lista. Cerrando sesión.");
+                    await firebaseSignOut(auth);
+                    user.value = null;
+                    error.value = `No tienes autorización para acceder (${userEmail}). 
+                          Contacta con el administrador para solicitar acceso.`;
+                    return false;
+                }
+
+                console.log("Usuario con acceso por claims. Permitiendo ingreso.");
+                // Si tiene claims de acceso, permitimos el acceso
+                return true;
             }
-
-            return true;
         } catch (e) {
             console.error('Error al iniciar sesión con Google:', e);
+            console.error('Detalles del error:', e.code, e.message);
             error.value = translateAuthError(e.code);
             return false;
         } finally {
@@ -63,40 +148,63 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Función para actualizar claims del usuario
     async function refreshUserClaims() {
+        console.log("Actualizando claims del usuario");
         if (!user.value) {
+            console.log("No hay usuario para actualizar claims");
             userClaims.value = null;
             return;
         }
 
         try {
             // Forzar actualización del token para obtener los últimos claims
+            console.log("Obteniendo token actualizado");
             await user.value.getIdToken(true);
             const idTokenResult = await user.value.getIdTokenResult();
             userClaims.value = idTokenResult.claims;
-            console.log('Claims del usuario:', userClaims.value);
+            console.log('Claims del usuario actualizados:', userClaims.value);
         } catch (e) {
             console.error('Error al obtener claims:', e);
+            console.error('Detalles del error:', e.code, e.message);
             userClaims.value = null;
         }
     }
 
     // Función para solicitar acceso (opcional)
     async function requestAccess() {
-        if (!user.value) return false;
+        console.log("Iniciando solicitud de acceso");
+        if (!user.value) {
+            console.log("No hay usuario para solicitar acceso");
+            return false;
+        }
 
         try {
+            // Primero verificamos si el email ya está en la lista de permitidos
+            console.log("Verificando si el email ya está en la lista antes de solicitar acceso");
+            const isEmailAllowed = await checkEmailInAllowedList(user.value.email);
+
+            if (isEmailAllowed) {
+                // Si ya está en la lista, no necesita solicitar acceso
+                console.log(`El email ${user.value.email} ya está en la lista de permitidos.`);
+                return true;
+            }
+
+            // Si no está en la lista, procedemos con la solicitud normal
+            console.log("Ejecutando Cloud Function para solicitar acceso");
             const functions = getFunctions();
             const requestAccessFn = httpsCallable(functions, 'requestAccess');
             await requestAccessFn();
+            console.log("Solicitud de acceso enviada correctamente");
             return true;
         } catch (e) {
             console.error('Error al solicitar acceso:', e);
+            console.error('Detalles del error:', e.code, e.message);
             error.value = 'Error al enviar solicitud de acceso. Intenta de nuevo.';
             return false;
         }
     }
 
     async function logout() {
+        console.log("Iniciando proceso de logout");
         loading.value = true;
         error.value = null;
 
@@ -104,9 +212,11 @@ export const useAuthStore = defineStore('auth', () => {
             await firebaseSignOut(auth);
             user.value = null;
             userClaims.value = null;
+            console.log("Logout completado con éxito");
             return true;
         } catch (e) {
             console.error('Error al cerrar sesión:', e);
+            console.error('Detalles del error:', e.code, e.message);
             error.value = e.message;
             return false;
         } finally {
@@ -116,15 +226,33 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Inicializar el estado de autenticación
     function init() {
+        console.log("Inicializando estado de autenticación");
         onAuthStateChanged(auth, async (currentUser) => {
+            console.log("Auth state changed:", currentUser ? currentUser.email : "No user");
             user.value = currentUser;
 
             if (currentUser) {
-                // Obtener claims del usuario
+                // Verificar si el email está en la lista de permitidos
+                const isEmailAllowed = await checkEmailInAllowedList(currentUser.email);
+
+                if (isEmailAllowed) {
+                    // Si el email está permitido, concedemos acceso automáticamente
+                    console.log(`Email ${currentUser.email} encontrado en la lista. Acceso automático.`);
+                    loading.value = false;
+
+                    // Esta línea es importante para forzar la actualización del estado
+                    setTimeout(() => {
+                        user.value = { ...currentUser };
+                    }, 100);
+
+                    return;
+                }
+
+                // Si no está en la lista, verificamos claims normalmente
                 await refreshUserClaims();
 
-                // Si hay un usuario pero no está autorizado, cerrar sesión
-                if (!isAuthorized.value) {
+                // Si hay un usuario pero no está autorizado por claims, cerrar sesión
+                if (!userClaims.value || userClaims.value.access !== true) {
                     firebaseSignOut(auth).then(() => {
                         user.value = null;
                         userClaims.value = null;
@@ -169,6 +297,7 @@ export const useAuthStore = defineStore('auth', () => {
         loginWithGoogle,
         logout,
         init,
-        requestAccess
+        requestAccess,
+        checkEmailInAllowedList
     }
 })

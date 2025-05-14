@@ -10,17 +10,22 @@ const urlStore = useUrlStore();
 const authStore = useAuthStore();
 
 onMounted(() => {
+  console.log("App.vue montado - Inicializando autenticación");
   // Inicializar estado de autenticación
   authStore.init();
 });
 
 // Observar cambios en el estado de autenticación para cargar datos
 watch(() => authStore.isAuthenticated, (isAuthenticated) => {
+  console.log("Estado de autenticación cambió:", isAuthenticated);
   if (isAuthenticated) {
     // Cargar datos solo cuando el usuario está autenticado
-    urlStore.fetchUrls();
+    console.log("Usuario autenticado, cargando URLs...");
+    setTimeout(() => {
+      urlStore.fetchUrls();
+    }, 200); // Pequeño retraso para asegurar que todo está inicializado
   }
-});
+}, { immediate: true });
 
 // Función para cerrar sesión
 const handleLogout = async () => {

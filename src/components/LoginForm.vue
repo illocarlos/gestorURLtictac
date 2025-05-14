@@ -5,14 +5,28 @@ import { useAuthStore } from '../stores/auth';
 const authStore = useAuthStore();
 const requestingAccess = ref(false);
 const accessRequested = ref(false);
+const loginInProgress = ref(false); // Nuevo estado para controlar múltiples clics
 
 onMounted(() => {
+  console.log("LoginForm montado - Inicializando autenticación");
   // Inicializar el store de autenticación
   authStore.init();
 });
 
 async function handleGoogleLogin() {
-  await authStore.loginWithGoogle();
+  if (loginInProgress.value) return; // Evitar múltiples clics
+  
+  console.log("Botón de login con Google presionado");
+  loginInProgress.value = true;
+  
+  try {
+    const success = await authStore.loginWithGoogle();
+    console.log("Resultado de login:", success);
+  } catch (error) {
+    console.error("Error en handleGoogleLogin:", error);
+  } finally {
+    loginInProgress.value = false;
+  }
 }
 
 async function handleRequestAccess() {
@@ -60,9 +74,9 @@ async function handleRequestAccess() {
         <button
           @click="handleGoogleLogin"
           type="button"
-          :disabled="accessRequested"
+          :disabled="accessRequested || loginInProgress"
           class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          :class="{ 'opacity-50 cursor-not-allowed': accessRequested }"
+          :class="{ 'opacity-50 cursor-not-allowed': accessRequested || loginInProgress }"
         >
           <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
             <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
@@ -72,7 +86,8 @@ async function handleRequestAccess() {
               <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
             </g>
           </svg>
-          Iniciar sesión con Google
+          <span v-if="loginInProgress">Iniciando sesión...</span>
+          <span v-else>Iniciar sesión con Google</span>
         </button>
         
         <!-- Botón para solicitar acceso -->
