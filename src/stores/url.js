@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { db } from '../config/firebase'
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore'
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, getDoc, arrayUnion, setDoc } from 'firebase/firestore'
 import useImages from '../composables/useImages'
 
 export const useUrlStore = defineStore('url', () => {
@@ -20,12 +20,24 @@ export const useUrlStore = defineStore('url', () => {
     const modalOpen = ref(false)
     const currentUrlId = ref(null)
     const errorMessages = ref([])
+    const domainOrder = ref([]) // Nueva variable para almacenar el orden de los dominios
 
     // Getters
     const countUrls = computed(() => urls.value.length)
     const currentUrl = computed(() =>
         urls.value.find(url => url.id === currentUrlId.value) || null
     )
+
+    // Extrae el dominio de una URL
+    const extractDomain = (url) => {
+        try {
+            const urlObj = new URL(url);
+            return urlObj.hostname;
+        } catch (e) {
+            // En caso de URL inválida, devolver la URL original
+            return url;
+        }
+    };
 
     // Acciones
     async function fetchUrls() {
@@ -37,11 +49,54 @@ export const useUrlStore = defineStore('url', () => {
                 id: doc.id,
                 ...doc.data()
             }))
+
+            // Obtener el orden de dominios si existe
+            try {
+                const orderDoc = await getDoc(doc(db, 'settings', 'domainOrder'));
+                if (orderDoc.exists()) {
+                    domainOrder.value = orderDoc.data().order || [];
+                } else {
+                    // Si no existe un orden guardado, generar uno predeterminado
+                    const domains = getUniqueDomains();
+                    domainOrder.value = domains;
+
+                    // Guardar el orden predeterminado
+                    await saveDomainOrder(domains);
+                }
+            } catch (orderErr) {
+                console.warn('Error al obtener orden de dominios:', orderErr);
+                // Si hay error, generar orden predeterminado
+                const domains = getUniqueDomains();
+                domainOrder.value = domains;
+            }
         } catch (e) {
             console.error('Error al obtener URLs:', e)
             error.value = e.message
         } finally {
             loading.value = false
+        }
+    }
+
+    // Nueva función para guardar el orden de dominios
+    async function saveDomainOrder(newOrder) {
+        loading.value = true;
+        error.value = null;
+        try {
+            // Guardar el orden en un documento especial en Firestore
+            await setDoc(doc(db, 'settings', 'domainOrder'), {
+                order: newOrder,
+                updatedAt: new Date()
+            });
+
+            // Actualizar el estado local
+            domainOrder.value = newOrder;
+            return true;
+        } catch (e) {
+            console.error('Error al guardar el orden de dominios:', e);
+            error.value = e.message;
+            return false;
+        } finally {
+            loading.value = false;
         }
     }
 
@@ -74,6 +129,14 @@ export const useUrlStore = defineStore('url', () => {
             }
 
             urls.value.unshift(newUrl)
+
+            // Comprobar si el dominio ya está en el orden, si no, añadirlo
+            const domain = extractDomain(urlData.original);
+            if (!domainOrder.value.includes(domain)) {
+                const newOrder = [domain, ...domainOrder.value];
+                await saveDomainOrder(newOrder);
+            }
+
             return docRef.id
         } catch (e) {
             console.error('Error al añadir URL:', e)
@@ -482,10 +545,11 @@ export const useUrlStore = defineStore('url', () => {
 
         urls.value.forEach(url => {
             try {
-                const urlObj = new URL(url.original);
-                domains.add(urlObj.hostname);
+                const domain = extractDomain(url.original);
+                domains.add(domain);
             } catch (e) {
                 // Si no es una URL válida, ignorarla
+                console.warn('URL inválida al extraer dominio:', url.original);
             }
         });
 
@@ -496,8 +560,7 @@ export const useUrlStore = defineStore('url', () => {
     function getUrlsByDomain(domain) {
         return urls.value.filter(url => {
             try {
-                const urlObj = new URL(url.original);
-                return urlObj.hostname === domain;
+                return extractDomain(url.original) === domain;
             } catch (e) {
                 return false;
             }
@@ -513,6 +576,7 @@ export const useUrlStore = defineStore('url', () => {
         currentUrlId,
         errorMessages,
         uploadingStatus,
+        domainOrder,  // Exponer domainOrder
         // Getters
         countUrls,
         currentUrl,
@@ -531,6 +595,7 @@ export const useUrlStore = defineStore('url', () => {
         submitErrorMessages,
         getUniqueDomains,
         getUrlsByDomain,
+        saveDomainOrder, // Exponer la función para guardar el orden
         // Helpers de imágenes
         getErrorImageUrl,
         isLocalImage

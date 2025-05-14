@@ -16,6 +16,13 @@ const selectedUrlForVisit = ref(null);
 const selectedUrlForDetails = ref(null);
 const visitorAuthRef = ref(null);
 
+// Nuevas variables para arrastrar y soltar
+const draggedDomain = ref(null);
+const draggedIndex = ref(null);
+const domainGroups = ref([]);
+const isDragging = ref(false);
+const dropTargetIndex = ref(null);
+
 onMounted(() => {
     loadUrls();
 });
@@ -25,8 +32,10 @@ watch(() => urlStore.urls, () => {
     // Actualización automática cuando cambian las URLs
 }, { deep: true });
 
-const loadUrls = () => {
-    urlStore.fetchUrls();
+const loadUrls = async () => {
+    await urlStore.fetchUrls();
+    // Inicializar grupos de dominios para arrastrar y soltar
+    syncDomainGroups();
 };
 
 // Función para extraer el dominio de una URL
@@ -38,6 +47,11 @@ const extractDomain = (url) => {
         // En caso de URL inválida, devolver la URL original
         return url;
     }
+};
+
+// Función para sincronizar los grupos de dominios con el store
+const syncDomainGroups = () => {
+    domainGroups.value = [...urlStore.domainOrder];
 };
 
 // Computed property para agrupar URLs por dominio
@@ -53,12 +67,94 @@ const urlsGroupedByDomain = computed(() => {
         grouped[domain].push(url);
     });
 
-    // Convertir el objeto agrupado en un array para la iteración en el template
-    return Object.entries(grouped).map(([domain, urls]) => ({
-        domain,
-        urls
-    }));
+    // Obtener todos los dominios presentes
+    const allDomains = Object.keys(grouped);
+    
+    // Si hay dominios que no están en el orden guardado, añadirlos al final
+    const missingDomains = allDomains.filter(domain => !urlStore.domainOrder.includes(domain));
+    
+    // Crear el array final de grupos ordenados
+    return [...urlStore.domainOrder, ...missingDomains]
+        .filter(domain => allDomains.includes(domain)) // Solo incluir dominios que existen en las URLs
+        .map(domain => ({
+            domain,
+            urls: grouped[domain] || []
+        }));
 });
+
+// Funciones para arrastrar y soltar
+const handleDragStart = (domain, index, event) => {
+    isDragging.value = true;
+    draggedDomain.value = domain;
+    draggedIndex.value = index;
+    
+    // Añadir clase para estilo durante arrastre
+    event.currentTarget.classList.add('domain-dragging');
+    
+    // Establecer datos para arrastrar
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', domain);
+    
+    // Hacer un timeout para asegurar que la clase se aplica
+    setTimeout(() => {
+        event.currentTarget.classList.add('opacity-50');
+    }, 10);
+};
+
+const handleDragEnd = (event) => {
+    isDragging.value = false;
+    draggedDomain.value = null;
+    draggedIndex.value = null;
+    dropTargetIndex.value = null;
+    
+    // Quitar clases de estilo
+    event.currentTarget.classList.remove('domain-dragging', 'opacity-50');
+    
+    // Quitar clases de todos los posibles objetivos
+    document.querySelectorAll('.domain-drop-target').forEach(el => {
+        el.classList.remove('domain-drop-target');
+    });
+};
+
+const handleDragOver = (index, event) => {
+    event.preventDefault();
+    
+    // Si es el mismo elemento, no hacer nada
+    if (index === draggedIndex.value) {
+        return;
+    }
+    
+    // Marcar como posible objetivo
+    dropTargetIndex.value = index;
+    event.currentTarget.classList.add('domain-drop-target');
+};
+
+const handleDragLeave = (event) => {
+    event.currentTarget.classList.remove('domain-drop-target');
+};
+
+const handleDrop = async (index, event) => {
+    event.preventDefault();
+    
+    // Quitar clases de estilo
+    event.currentTarget.classList.remove('domain-drop-target');
+    
+    // Si es el mismo elemento, no hacer nada
+    if (index === draggedIndex.value) {
+        return;
+    }
+    
+    // Reordenar dominios
+    const newOrder = [...urlStore.domainOrder];
+    const movedDomain = newOrder.splice(draggedIndex.value, 1)[0];
+    newOrder.splice(index, 0, movedDomain);
+    
+    // Guardar el nuevo orden en Firestore
+    await urlStore.saveDomainOrder(newOrder);
+    
+    // Actualizar la UI
+    syncDomainGroups();
+};
 
 const truncateUrl = (url) => {
     return url.length > 40 ? url.substring(0, 37) + '...' : url;
@@ -179,48 +275,71 @@ const submitErrors = async () => {
             </button>
         </div>
 
+        <!-- Instrucciones de arrastrar y soltar -->
+        <div class="bg-white/10 p-3 rounded-md mb-4 text-white text-sm flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+            <p>Para reordenar dominios, arrástralos y suéltalos en la posición deseada. Los cambios se guardan automáticamente.</p>
+        </div>
+
         <div v-if="urlStore.error" class="mb-4 text-sm text-red-600">
             {{ urlStore.error }}
         </div>
 
         <div class="overflow-x-auto" v-if="urlStore.urls.length > 0">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Dominio / Nombre</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Estado</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Visitas</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Acciones</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <!-- Grupo de dominio -->
-                    <template v-for="(group, groupIndex) in urlsGroupedByDomain" :key="'group-' + groupIndex">
-                        <!-- Fila de dominio -->
-                        <tr class="bg-gray-100">
-                            <td colspan="5"
-                                class="px-6 py-2 text-sm font-bold bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800 text-white uppercase ">
-                                {{ group.domain }}
-                            </td>
-                        </tr>
+            <div class="min-w-full divide-y divide-gray-200">
+                <!-- Dominios reordenables -->
+                <div v-for="(group, groupIndex) in urlsGroupedByDomain" :key="'group-' + groupIndex"
+                     class="domain-group mb-6 rounded-lg overflow-hidden shadow-lg transition-all duration-300"
+                     :class="{'shadow-xl transform scale-101': draggedIndex === groupIndex}"
+                     draggable="true"
+                     @dragstart="handleDragStart(group.domain, groupIndex, $event)"
+                     @dragend="handleDragEnd($event)"
+                     @dragover="handleDragOver(groupIndex, $event)"
+                     @dragleave="handleDragLeave($event)"
+                     @drop="handleDrop(groupIndex, $event)">
+                    
+                    <!-- Cabecera de dominio con indicadores de arrastre -->
+                    <div class="domain-header p-3 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800 text-white flex items-center cursor-move">
+                        <div class="drag-handle mr-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-bold uppercase flex-1">{{ group.domain }}</h3>
+                        <span class="text-xs bg-white/20 px-2 py-1 rounded-full">
+                            {{ group.urls.length }} URLs
+                        </span>
+                    </div>
 
-                        <!-- URLs dentro del grupo de dominio -->
-                        <template v-for="url in group.urls" :key="url.id">
-                            <tr
+                    <!-- Tabla de URLs para este dominio -->
+                    <table class="min-w-full divide-y divide-gray-200 bg-white">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Nombre</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Estado</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Visitas</th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <!-- URLs para este dominio -->
+                            <tr v-for="url in group.urls" :key="url.id"
                                 :class="{ 'bg-green-50': url.status === 'approved', 'bg-red-50': url.status === 'rejected' }">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 pl-10">
-                                    <!-- Indentación para mostrar jerarquía -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                     {{ url.name }}
                                     <div class="text-xs text-gray-500">{{ url.site_name }}</div>
                                 </td>
@@ -293,10 +412,10 @@ const submitErrors = async () => {
                                     </div>
                                 </td>
                             </tr>
-                        </template>
-                    </template>
-                </tbody>
-            </table>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <div v-else-if="!urlStore.loading" class="py-6 text-center text-gray-500 italic">
@@ -332,5 +451,42 @@ const submitErrors = async () => {
 
 .button-custom:hover {
     color: white;
+}
+
+/* Estilos para arrastrar y soltar */
+.domain-group {
+    transition: all 0.3s ease;
+}
+
+.domain-dragging {
+    cursor: grabbing;
+    z-index: 10;
+}
+
+.domain-drop-target {
+    border: 2px dashed #BBF33A;
+    position: relative;
+}
+
+.domain-drop-target::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background-color: #BBF33A;
+    transform: scaleX(0.97);
+    border-radius: 4px 4px 0 0;
+    z-index: 5;
+}
+
+.drag-handle {
+    cursor: move;
+}
+
+/* Ayuda al efecto de escala ligera durante el arrastre */
+.scale-101 {
+    transform: scale(1.01);
 }
 </style>
