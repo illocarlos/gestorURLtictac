@@ -6,6 +6,8 @@ import ErrorInfoModal from './ErrorInfoModal.vue';
 import VisitorAuthComponent from './VisitDetailsModal.vue';
 import VisitConsentModal from './VisitConsentModal.vue';
 import VisitDetailsModal from './VisitDetailsModal.vue';
+import { db } from '../config/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const urlStore = useUrlStore();
 const showInfoModal = ref(false);
@@ -16,10 +18,9 @@ const selectedUrlForVisit = ref(null);
 const selectedUrlForDetails = ref(null);
 const visitorAuthRef = ref(null);
 
-// Nuevas variables para arrastrar y soltar
+// Variables para el drag and drop - versión mejorada
 const draggedDomain = ref(null);
 const draggedIndex = ref(null);
-const domainGroups = ref([]);
 const isDragging = ref(false);
 const dropTargetIndex = ref(null);
 
@@ -41,6 +42,28 @@ const loadUrls = async () => {
     console.log('⚠️ Domain groups synced:', domainGroups.value);
 };
 
+// Función para sincronizar forzadamente el orden de dominios
+const forceSync = async () => {
+    try {
+        // Obtener el orden actual desde Firestore
+        const orderDoc = await getDoc(doc(db, 'settings', 'domainOrder'));
+        if (orderDoc.exists()) {
+            const orderData = orderDoc.data();
+            if (orderData.order && Array.isArray(orderData.order)) {
+                urlStore.domainOrder = [...orderData.order];
+                
+                // Actualizar la UI
+                await urlStore.fetchUrls();
+                
+                alert('Orden de dominios sincronizado correctamente');
+            }
+        }
+    } catch (error) {
+        console.error('Error al sincronizar orden:', error);
+        alert('Error al sincronizar el orden. Por favor, intenta de nuevo.');
+    }
+};
+
 // Función para extraer el dominio de una URL
 const extractDomain = (url) => {
     try {
@@ -51,6 +74,9 @@ const extractDomain = (url) => {
         return url;
     }
 };
+
+// Dominio grupos 
+const domainGroups = ref([]);
 
 // Función para sincronizar los grupos de dominios con el store
 const syncDomainGroups = () => {
@@ -110,129 +136,96 @@ const urlsGroupedByDomain = computed(() => {
         }));
 });
 
-// Actualizar la función handleDragStart
+// Funciones de drag and drop mejoradas
 const handleDragStart = (domain, index, event) => {
-    console.log('⚠️ handleDragStart:', { domain, index });
-    console.log('⚠️ Event target:', event.target);
-    console.log('⚠️ Event currentTarget:', event.currentTarget);
-    console.log('⚠️ Current domainOrder:', urlStore.domainOrder);
+    console.log(`Iniciando arrastre del dominio: ${domain} desde el índice: ${index}`);
     
-    // Verificar si el dominio está en domainOrder
-    if (!urlStore.domainOrder.includes(domain)) {
-        console.log('⚠️ Domain not in order, adding it:', domain);
-        // Añadir el dominio a domainOrder antes de comenzar el arrastre
-        const newOrder = [...urlStore.domainOrder, domain];
-        
-        // Guardar y actualizar
-        urlStore.saveDomainOrder(newOrder).then(() => {
-            console.log('⚠️ Domain added to order, now can drag');
-            // Proceder con el arrastre
-            isDragging.value = true;
-            draggedDomain.value = domain;
-            draggedIndex.value = newOrder.indexOf(domain); // Actualizar el índice
-            
-            // Establecer datos para arrastrar
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', domain);
-        });
-        
-        // No permitir arrastrar todavía
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', domain);
+    
+    // Guardar lo que estamos arrastrando
+    draggedDomain.value = domain;
+    draggedIndex.value = index;
+    isDragging.value = true;
+};
+
+const handleDragOver = (index, event) => {
+    event.preventDefault();
+    
+    // No hacer nada si es el mismo elemento
+    if (index === draggedIndex.value) {
+        dropTargetIndex.value = null;
         return;
     }
     
-    isDragging.value = true;
-    draggedDomain.value = domain;
-    draggedIndex.value = urlStore.domainOrder.indexOf(domain); // Usar el índice en domainOrder, no en la vista
-    
-    // Establecer datos para arrastrar
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', domain);
+    // Marcar el objetivo actual
+    dropTargetIndex.value = index;
 };
 
-const handleDragEnd = (event) => {
-    console.log('⚠️ handleDragEnd called');
-    console.log('⚠️ Dragged domain:', draggedDomain.value);
-    console.log('⚠️ Dragged index:', draggedIndex.value);
-    
+const handleDragEnd = () => {
+    console.log('Arrastre terminado');
     isDragging.value = false;
     draggedDomain.value = null;
     draggedIndex.value = null;
     dropTargetIndex.value = null;
 };
 
-const handleDragOver = (index, event) => {
-    event.preventDefault();
-    
-    // Si es el mismo elemento, no hacer nada
-    if (index === draggedIndex.value) {
-        return;
-    }
-    
-    // Marcar como posible objetivo
-    dropTargetIndex.value = index;
-};
-
-const handleDragLeave = (event) => {
-    // No necesario manipular classList, lo hacemos por binding
-    // Podemos dejar vacía esta función o eliminarla
-};
-
 const handleDrop = async (index, event) => {
     event.preventDefault();
     
-    // Resetear dropTargetIndex
+    console.log(`Soltando en índice: ${index}`);
+    
+    // Resetear el indicador visual
     dropTargetIndex.value = null;
     
-    // Si es el mismo elemento o algún índice es inválido, no hacer nada
-    if (index === draggedIndex.value || 
-        draggedIndex.value === null || 
-        draggedIndex.value === undefined || 
-        index === null || 
-        index === undefined) {
-        return;
-    }
-    
-    // Verificar que tenemos un dominio arrastrado válido
-    if (!draggedDomain.value) {
-        console.error('No hay dominio arrastrado definido');
+    // Validaciones básicas
+    if (!draggedDomain.value || index === draggedIndex.value || index === null) {
+        console.log('Drop cancelado: condiciones no válidas');
         return;
     }
     
     try {
-        // Obtener el orden actual de dominios
-        let currentOrder = [...urlStore.domainOrder];
+        // 1. Obtener el orden actual de dominios
+        const currentOrderCopy = [...urlStore.domainOrder];
+        console.log('Orden actual:', currentOrderCopy);
         
-        // Asegurarse de que el dominio arrastrado existe en el orden
-        if (!currentOrder.includes(draggedDomain.value)) {
-            console.log(`Dominio ${draggedDomain.value} no encontrado en el orden, añadiéndolo`);
-            currentOrder.push(draggedDomain.value);
+        // 2. Eliminar el dominio de su posición actual
+        const sourceIndex = currentOrderCopy.indexOf(draggedDomain.value);
+        if (sourceIndex === -1) {
+            console.error('Dominio no encontrado en el orden actual');
+            return;
         }
         
-        // Obtener el índice actual del dominio arrastrado
-        const currentIndex = currentOrder.indexOf(draggedDomain.value);
+        currentOrderCopy.splice(sourceIndex, 1);
         
-        // Remover el dominio de su posición actual
-        currentOrder.splice(currentIndex, 1);
+        // 3. Insertar el dominio en la nueva posición
+        currentOrderCopy.splice(index, 0, draggedDomain.value);
         
-        // Insertar el dominio en la nueva posición
-        // Si el índice destino es mayor que el origen, tenemos que ajustar 
-        // porque ya removimos un elemento
-        const targetIndex = index > currentIndex ? index - 1 : index;
-        currentOrder.splice(targetIndex, 0, draggedDomain.value);
+        console.log('Nuevo orden:', currentOrderCopy);
         
-        console.log('Nuevo orden de dominios:', currentOrder);
+        // 4. Guardar el nuevo orden en Firestore usando una llamada directa
+        const settingsRef = doc(db, 'settings', 'domainOrder');
+        await setDoc(settingsRef, {
+            order: currentOrderCopy,
+            updatedAt: new Date()
+        });
         
-        // Guardar el nuevo orden en Firestore
-        await urlStore.saveDomainOrder(currentOrder);
+        console.log('Orden guardado directamente en Firestore');
         
-        // Forzar actualización de la UI
+        // 5. Actualizar el store local
+        urlStore.domainOrder = [...currentOrderCopy];
+        
+        // 6. Forzar la actualización de la UI
         await urlStore.fetchUrls();
         
-        console.log('Orden de dominios actualizado con éxito');
+        console.log('UI actualizada');
     } catch (error) {
-        console.error('Error al actualizar el orden de dominios:', error);
+        console.error('ERROR al actualizar el orden:', error);
+        // Intentar mostrar un mensaje de error al usuario
+        alert('Error al actualizar el orden de dominios. Por favor, intenta de nuevo.');
     }
 };
+
 const truncateUrl = (url) => {
     return url.length > 40 ? url.substring(0, 37) + '...' : url;
 };
@@ -346,10 +339,17 @@ const submitErrors = async () => {
     <div class="bg-white shadow rounded-lg p-6 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-semibold text-white">URLs registradas</h2>
-            <button @click="loadUrls" :disabled="urlStore.loading"
-                class="button-custom uppercase font-bold bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                {{ urlStore.loading ? 'Cargando...' : 'Actualizar lista' }}
-            </button>
+            <div class="flex space-x-2">
+                <button @click="loadUrls" :disabled="urlStore.loading"
+                    class="button-custom uppercase font-bold bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    {{ urlStore.loading ? 'Cargando...' : 'Actualizar lista' }}
+                </button>
+                
+                <!-- Botón de sincronización forzada -->
+                <button @click="forceSync" class="button-custom uppercase font-bold py-2 px-4 rounded-md">
+                    Sincronizar Orden
+                </button>
+            </div>
         </div>
 
         <!-- Instrucciones de arrastrar y soltar -->
@@ -371,17 +371,23 @@ const submitErrors = async () => {
                 <div v-for="(group, groupIndex) in urlsGroupedByDomain" :key="'group-' + groupIndex"
                      class="domain-group mb-6 rounded-lg overflow-hidden shadow-lg transition-all duration-300"
                      :class="{
-                       'shadow-xl transform scale-101': draggedIndex === groupIndex,
+                       'shadow-xl transform scale-102': draggedIndex === groupIndex,
                        'opacity-50': isDragging && draggedIndex === groupIndex,
-                       'domain-dragging': isDragging && draggedIndex === groupIndex,
-                       'domain-drop-target': dropTargetIndex === groupIndex && draggedIndex !== groupIndex
+                       'border-4 border-lime-400': dropTargetIndex === groupIndex && draggedIndex !== groupIndex
                      }"
                      draggable="true"
                      @dragstart="handleDragStart(group.domain, groupIndex, $event)"
                      @dragend="handleDragEnd($event)"
                      @dragover="handleDragOver(groupIndex, $event)"
-                     @dragleave="handleDragLeave($event)"
+                     @dragleave="() => {}"
                      @drop="handleDrop(groupIndex, $event)">
+                    
+                    <!-- Indicador visual mejorado cuando es el objetivo del drop -->
+                    <div 
+                        v-if="dropTargetIndex === groupIndex && draggedIndex !== groupIndex" 
+                        class="bg-lime-400 text-black text-xs px-2 py-1 absolute right-0 top-0 rounded-bl-md z-10 font-bold animate-pulse">
+                        Soltar aquí
+                    </div>
                     
                     <!-- Cabecera de dominio con indicadores de arrastre -->
                     <div class="domain-header p-3 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800 text-white flex items-center cursor-move">
@@ -568,7 +574,20 @@ const submitErrors = async () => {
 }
 
 /* Ayuda al efecto de escala ligera durante el arrastre */
-.scale-101 {
-    transform: scale(1.01);
+.scale-102 {
+    transform: scale(1.02);
+}
+
+/* Animación de pulso para el indicador de soltar */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+.animate-pulse {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 </style>

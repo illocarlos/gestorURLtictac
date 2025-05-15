@@ -54,23 +54,29 @@ export const useUrlStore = defineStore('url', () => {
 
             // Obtener el orden de dominios si existe
             try {
-                console.log('⚠️ Store: Getting domain order from Firestore');
+                console.log('⚠️ Store: Obteniendo orden de dominios desde Firestore');
                 const orderDoc = await getDoc(doc(db, 'settings', 'domainOrder'));
                 if (orderDoc.exists()) {
-                    console.log('⚠️ Store: Domain order found in Firestore:', orderDoc.data().order);
-                    domainOrder.value = orderDoc.data().order || [];
-                } else {
-                    // Si no existe un orden guardado, generar uno predeterminado
-                    console.log('⚠️ Store: No domain order found, generating default');
-                    const domains = getUniqueDomains();
-                    console.log('⚠️ Store: Unique domains generated:', domains);
-                    domainOrder.value = domains;
+                    const orderData = orderDoc.data();
+                    console.log('⚠️ Store: Datos recibidos de Firestore:', orderData);
 
-                    // Guardar el orden predeterminado
-                    await saveDomainOrder(domains);
+                    if (orderData.order && Array.isArray(orderData.order) && orderData.order.length > 0) {
+                        domainOrder.value = [...orderData.order];
+                        console.log('⚠️ Store: Orden de dominios cargado correctamente:', domainOrder.value);
+                    } else {
+                        console.warn('⚠️ Store: Datos de orden inválidos, generando orden predeterminado');
+                        const newDefaultOrder = getUniqueDomains();
+                        domainOrder.value = [...newDefaultOrder];
+                        await saveDomainOrder(newDefaultOrder);
+                    }
+                } else {
+                    console.log('⚠️ Store: No existe documento de orden, creando uno nuevo');
+                    const newDefaultOrder = getUniqueDomains();
+                    domainOrder.value = [...newDefaultOrder];
+                    await saveDomainOrder(newDefaultOrder);
                 }
             } catch (orderErr) {
-                console.warn('⚠️ Store: Error al obtener orden de dominios:', orderErr);
+                console.error('⚠️ Store: Error al obtener orden de dominios:', orderErr);
                 // Si hay error, generar orden predeterminado
                 const domains = getUniqueDomains();
                 console.log('⚠️ Store: Fallback to unique domains:', domains);
@@ -88,35 +94,31 @@ export const useUrlStore = defineStore('url', () => {
     }
 
     // Nueva función para guardar el orden de dominios con corrección para filtrar undefined/null
-    // En src/stores/url.js
     async function saveDomainOrder(newOrder) {
         loading.value = true;
         error.value = null;
         try {
             console.log('⚠️ Store: saveDomainOrder called with:', newOrder);
 
-            // Filtrar valores undefined o null del array
-            const cleanOrder = newOrder.filter(item => item !== undefined && item !== null);
-            console.log('⚠️ Store: Cleaned order:', cleanOrder);
-
-            // Verificar que cleanOrder no esté vacío
-            if (!cleanOrder || cleanOrder.length === 0) {
-                const error = new Error('El orden de dominios no puede estar vacío');
-                console.error('⚠️ Store:', error.message);
-                throw error;
+            // Validar el nuevo orden
+            if (!newOrder || !Array.isArray(newOrder) || newOrder.length === 0) {
+                throw new Error('El orden de dominios debe ser un array no vacío');
             }
 
-            // Guardar el orden limpio en Firestore
-            console.log('⚠️ Store: Saving domain order to Firestore');
-            await setDoc(doc(db, 'settings', 'domainOrder'), {
+            // Filtrar valores inválidos
+            const cleanOrder = newOrder.filter(Boolean);
+
+            // Actualizar Firestore con una escritura directa
+            const settingsRef = doc(db, 'settings', 'domainOrder');
+            await setDoc(settingsRef, {
                 order: cleanOrder,
                 updatedAt: new Date()
-            }, { merge: true }); // Añadir la opción merge para preservar otros campos
-            console.log('⚠️ Store: Domain order saved successfully');
+            });
 
-            // Actualizar el estado local
-            domainOrder.value = [...cleanOrder]; // Usar spread para crear una nueva referencia
-            console.log('⚠️ Store: Local domain order updated:', domainOrder.value);
+            // Actualizar el estado local con una nueva referencia
+            domainOrder.value = [...cleanOrder];
+
+            console.log('⚠️ Store: Orden guardado y sincronizado correctamente');
             return true;
         } catch (e) {
             console.error('⚠️ Store: Error al guardar el orden de dominios:', e);
