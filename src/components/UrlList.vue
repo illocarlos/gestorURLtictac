@@ -335,11 +335,7 @@ const submitErrors = async () => {
                     class="button-custom uppercase font-bold bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed">
                     {{ urlStore.loading ? 'Cargando...' : 'Actualizar lista' }}
                 </button>
-                
-                <!-- Botón de sincronización forzada -->
-                <button @click="forceSync" class="button-custom uppercase font-bold py-2 px-4 rounded-md">
-                    Sincronizar Orden
-                </button>
+              
             </div>
         </div>
 
