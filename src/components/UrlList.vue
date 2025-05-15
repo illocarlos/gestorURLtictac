@@ -33,9 +33,12 @@ watch(() => urlStore.urls, () => {
 }, { deep: true });
 
 const loadUrls = async () => {
+    console.log('⚠️ loadUrls called');
     await urlStore.fetchUrls();
     // Inicializar grupos de dominios para arrastrar y soltar
+    console.log('⚠️ URLs loaded, domain order:', urlStore.domainOrder);
     syncDomainGroups();
+    console.log('⚠️ Domain groups synced:', domainGroups.value);
 };
 
 // Función para extraer el dominio de una URL
@@ -51,10 +54,23 @@ const extractDomain = (url) => {
 
 // Función para sincronizar los grupos de dominios con el store
 const syncDomainGroups = () => {
-    domainGroups.value = [...urlStore.domainOrder];
+    console.log('⚠️ Syncing domain groups');
+    console.log('⚠️ urlStore.domainOrder:', urlStore.domainOrder);
+    
+    // Asegurarse de que domainOrder tiene un valor válido
+    if (urlStore.domainOrder && Array.isArray(urlStore.domainOrder)) {
+        const filteredDomains = urlStore.domainOrder.filter(d => d);
+        console.log('⚠️ Filtered domains:', filteredDomains);
+        domainGroups.value = [...filteredDomains]; 
+    } else {
+        console.warn('⚠️ WARNING: urlStore.domainOrder is invalid, using empty array');
+        domainGroups.value = []; // Inicializar como un array vacío si no hay datos
+    }
+    
+    console.log('⚠️ Updated domainGroups.value:', domainGroups.value);
 };
 
-// Computed property para agrupar URLs por dominio
+// Actualizar el computed property urlsGroupedByDomain
 const urlsGroupedByDomain = computed(() => {
     const grouped = {};
 
@@ -73,6 +89,18 @@ const urlsGroupedByDomain = computed(() => {
     // Si hay dominios que no están en el orden guardado, añadirlos al final
     const missingDomains = allDomains.filter(domain => !urlStore.domainOrder.includes(domain));
     
+    // Si se han encontrado dominios que faltan, actualizamos el domainOrder
+    if (missingDomains.length > 0) {
+        console.log('⚠️ Found missing domains:', missingDomains);
+        // Actualizamos el domainOrder en el store
+        setTimeout(async () => {
+            const newOrder = [...urlStore.domainOrder, ...missingDomains];
+            console.log('⚠️ Updating domain order with missing domains:', newOrder);
+            await urlStore.saveDomainOrder(newOrder);
+            console.log('⚠️ Domain order updated with missing domains');
+        }, 0);
+    }
+    
     // Crear el array final de grupos ordenados
     return [...urlStore.domainOrder, ...missingDomains]
         .filter(domain => allDomains.includes(domain)) // Solo incluir dominios que existen en las URLs
@@ -82,38 +110,54 @@ const urlsGroupedByDomain = computed(() => {
         }));
 });
 
-// Funciones para arrastrar y soltar
+// Actualizar la función handleDragStart
 const handleDragStart = (domain, index, event) => {
+    console.log('⚠️ handleDragStart:', { domain, index });
+    console.log('⚠️ Event target:', event.target);
+    console.log('⚠️ Event currentTarget:', event.currentTarget);
+    console.log('⚠️ Current domainOrder:', urlStore.domainOrder);
+    
+    // Verificar si el dominio está en domainOrder
+    if (!urlStore.domainOrder.includes(domain)) {
+        console.log('⚠️ Domain not in order, adding it:', domain);
+        // Añadir el dominio a domainOrder antes de comenzar el arrastre
+        const newOrder = [...urlStore.domainOrder, domain];
+        
+        // Guardar y actualizar
+        urlStore.saveDomainOrder(newOrder).then(() => {
+            console.log('⚠️ Domain added to order, now can drag');
+            // Proceder con el arrastre
+            isDragging.value = true;
+            draggedDomain.value = domain;
+            draggedIndex.value = newOrder.indexOf(domain); // Actualizar el índice
+            
+            // Establecer datos para arrastrar
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', domain);
+        });
+        
+        // No permitir arrastrar todavía
+        return;
+    }
+    
     isDragging.value = true;
     draggedDomain.value = domain;
-    draggedIndex.value = index;
-    
-    // Añadir clase para estilo durante arrastre
-    event.currentTarget.classList.add('domain-dragging');
+    draggedIndex.value = urlStore.domainOrder.indexOf(domain); // Usar el índice en domainOrder, no en la vista
     
     // Establecer datos para arrastrar
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', domain);
-    
-    // Hacer un timeout para asegurar que la clase se aplica
-    setTimeout(() => {
-        event.currentTarget.classList.add('opacity-50');
-    }, 10);
 };
 
 const handleDragEnd = (event) => {
+    console.log('⚠️ handleDragEnd called');
+    console.log('⚠️ Dragged domain:', draggedDomain.value);
+    console.log('⚠️ Dragged index:', draggedIndex.value);
+    
     isDragging.value = false;
     draggedDomain.value = null;
     draggedIndex.value = null;
     dropTargetIndex.value = null;
-    
-    // Quitar clases de estilo
-    event.currentTarget.classList.remove('domain-dragging', 'opacity-50');
-    
-    // Quitar clases de todos los posibles objetivos
-    document.querySelectorAll('.domain-drop-target').forEach(el => {
-        el.classList.remove('domain-drop-target');
-    });
 };
 
 const handleDragOver = (index, event) => {
@@ -126,36 +170,77 @@ const handleDragOver = (index, event) => {
     
     // Marcar como posible objetivo
     dropTargetIndex.value = index;
-    event.currentTarget.classList.add('domain-drop-target');
 };
 
 const handleDragLeave = (event) => {
-    event.currentTarget.classList.remove('domain-drop-target');
+    // No necesario manipular classList, lo hacemos por binding
+    // Podemos dejar vacía esta función o eliminarla
 };
 
 const handleDrop = async (index, event) => {
     event.preventDefault();
+ 
     
-    // Quitar clases de estilo
-    event.currentTarget.classList.remove('domain-drop-target');
+    // Resetear dropTargetIndex
+    dropTargetIndex.value = null;
     
-    // Si es el mismo elemento, no hacer nada
-    if (index === draggedIndex.value) {
+    // Si es el mismo elemento o algún índice es inválido, no hacer nada
+    if (index === draggedIndex.value || 
+        draggedIndex.value === null || 
+        draggedIndex.value === undefined || 
+        index === null || 
+        index === undefined) {
         return;
     }
     
-    // Reordenar dominios
-    const newOrder = [...urlStore.domainOrder];
-    const movedDomain = newOrder.splice(draggedIndex.value, 1)[0];
-    newOrder.splice(index, 0, movedDomain);
+    // Verificar que el dominio arrastrado existe en el orden de dominios
+    if (draggedDomain.value && !urlStore.domainOrder.includes(draggedDomain.value)) {
+        const updatedOrder = [...urlStore.domainOrder, draggedDomain.value];
+        await urlStore.saveDomainOrder(updatedOrder);
+        // Actualizar el índice arrastrado
+        draggedIndex.value = updatedOrder.length - 1;
+    }
     
-    // Guardar el nuevo orden en Firestore
-    await urlStore.saveDomainOrder(newOrder);
     
-    // Actualizar la UI
-    syncDomainGroups();
+    // Verificar el índice arrastrado una vez más
+    if (draggedIndex.value >= urlStore.domainOrder.length) {
+        draggedIndex.value = urlStore.domainOrder.indexOf(draggedDomain.value);
+        if (draggedIndex.value === -1) {
+            return;
+        }
+    }
+    
+    // Reordenar dominios solo si tenemos un orden válido
+    if (urlStore.domainOrder && Array.isArray(urlStore.domainOrder) && urlStore.domainOrder.length > 0) {
+        const newOrder = [...urlStore.domainOrder];
+        
+        // Verificar que el índice de origen está dentro del rango
+        if (draggedIndex.value >= 0 && draggedIndex.value < newOrder.length) {
+            const movedDomain = newOrder.splice(draggedIndex.value, 1)[0];
+            
+            // Verificar que el elemento movido existe
+            if (movedDomain) {
+                // Asegurarse de que el índice de destino es válido
+                const targetIndex = Math.min(index, newOrder.length);
+                newOrder.splice(targetIndex, 0, movedDomain);
+                
+                console.log('⚠️ New domain order:', newOrder);
+                
+                // Guardar el nuevo orden en Firestore
+                try {
+                    await urlStore.saveDomainOrder(newOrder);
+                } catch (error) {
+                }
+                
+                // Actualizar la UI
+                syncDomainGroups();
+            } else {
+            }
+        } else {
+        }
+    } else {
+    }
 };
-
 const truncateUrl = (url) => {
     return url.length > 40 ? url.substring(0, 37) + '...' : url;
 };
@@ -290,10 +375,15 @@ const submitErrors = async () => {
 
         <div class="overflow-x-auto" v-if="urlStore.urls.length > 0">
             <div class="min-w-full divide-y divide-gray-200">
-                <!-- Dominios reordenables -->
+                <!-- Dominios reordenables - Usando binding de clase en vez de manipulación directa -->
                 <div v-for="(group, groupIndex) in urlsGroupedByDomain" :key="'group-' + groupIndex"
                      class="domain-group mb-6 rounded-lg overflow-hidden shadow-lg transition-all duration-300"
-                     :class="{'shadow-xl transform scale-101': draggedIndex === groupIndex}"
+                     :class="{
+                       'shadow-xl transform scale-101': draggedIndex === groupIndex,
+                       'opacity-50': isDragging && draggedIndex === groupIndex,
+                       'domain-dragging': isDragging && draggedIndex === groupIndex,
+                       'domain-drop-target': dropTargetIndex === groupIndex && draggedIndex !== groupIndex
+                     }"
                      draggable="true"
                      @dragstart="handleDragStart(group.domain, groupIndex, $event)"
                      @dragend="handleDragEnd($event)"

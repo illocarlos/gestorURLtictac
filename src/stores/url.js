@@ -44,55 +44,80 @@ export const useUrlStore = defineStore('url', () => {
         loading.value = true
         error.value = null
         try {
+            console.log('⚠️ Store: fetchUrls started');
             const querySnapshot = await getDocs(collection(db, 'urls'))
             urls.value = querySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }))
+            console.log('⚠️ Store: urls loaded:', urls.value.length);
 
             // Obtener el orden de dominios si existe
             try {
+                console.log('⚠️ Store: Getting domain order from Firestore');
                 const orderDoc = await getDoc(doc(db, 'settings', 'domainOrder'));
                 if (orderDoc.exists()) {
+                    console.log('⚠️ Store: Domain order found in Firestore:', orderDoc.data().order);
                     domainOrder.value = orderDoc.data().order || [];
                 } else {
                     // Si no existe un orden guardado, generar uno predeterminado
+                    console.log('⚠️ Store: No domain order found, generating default');
                     const domains = getUniqueDomains();
+                    console.log('⚠️ Store: Unique domains generated:', domains);
                     domainOrder.value = domains;
 
                     // Guardar el orden predeterminado
                     await saveDomainOrder(domains);
                 }
             } catch (orderErr) {
-                console.warn('Error al obtener orden de dominios:', orderErr);
+                console.warn('⚠️ Store: Error al obtener orden de dominios:', orderErr);
                 // Si hay error, generar orden predeterminado
                 const domains = getUniqueDomains();
+                console.log('⚠️ Store: Fallback to unique domains:', domains);
                 domainOrder.value = domains;
             }
+
+            // Verificar la estructura final de domainOrder
+            console.log('⚠️ Store: Final domain order:', domainOrder.value);
         } catch (e) {
-            console.error('Error al obtener URLs:', e)
+            console.error('⚠️ Store: Error al obtener URLs:', e)
             error.value = e.message
         } finally {
             loading.value = false
         }
     }
 
-    // Nueva función para guardar el orden de dominios
+    // Nueva función para guardar el orden de dominios con corrección para filtrar undefined/null
     async function saveDomainOrder(newOrder) {
         loading.value = true;
         error.value = null;
         try {
-            // Guardar el orden en un documento especial en Firestore
+            console.log('⚠️ Store: saveDomainOrder called with:', newOrder);
+
+            // Filtrar valores undefined o null del array
+            const cleanOrder = newOrder.filter(item => item !== undefined && item !== null);
+            console.log('⚠️ Store: Cleaned order:', cleanOrder);
+            // Verificar que cleanOrder no esté vacío
+            if (!cleanOrder || cleanOrder.length === 0) {
+                const error = new Error('El orden de dominios no puede estar vacío');
+                console.error('⚠️ Store:', error.message);
+                throw error;
+            }
+            
+            // Guardar el orden limpio en Firestore
+            console.log('⚠️ Store: Saving domain order to Firestore');
             await setDoc(doc(db, 'settings', 'domainOrder'), {
-                order: newOrder,
+                order: cleanOrder,
                 updatedAt: new Date()
             });
+            console.log('⚠️ Store: Domain order saved successfully');
 
             // Actualizar el estado local
-            domainOrder.value = newOrder;
+            domainOrder.value = cleanOrder;
+            console.log('⚠️ Store: Local domain order updated:', domainOrder.value);
             return true;
         } catch (e) {
-            console.error('Error al guardar el orden de dominios:', e);
+            console.error('⚠️ Store: Error al guardar el orden de dominios:', e);
             error.value = e.message;
             return false;
         } finally {
@@ -100,10 +125,33 @@ export const useUrlStore = defineStore('url', () => {
         }
     }
 
+    // Añadir logs a la función getUniqueDomains
+    function getUniqueDomains() {
+        console.log('⚠️ Store: getUniqueDomains called');
+        const domains = new Set();
+
+        urls.value.forEach(url => {
+            try {
+                const domain = extractDomain(url.original);
+                console.log(`⚠️ Store: Extracted domain from ${url.original}: ${domain}`);
+                domains.add(domain);
+            } catch (e) {
+                // Si no es una URL válida, ignorarla
+                console.warn('⚠️ Store: URL inválida al extraer dominio:', url.original);
+            }
+        });
+
+        const result = Array.from(domains);
+        console.log('⚠️ Store: Unique domains found:', result);
+        return result;
+    }
+
+    // Añadir logs a la función addUrl
     async function addUrl(urlData) {
         loading.value = true
         error.value = null
         try {
+            console.log('⚠️ Store: addUrl called with:', urlData);
             const docRef = await addDoc(collection(db, 'urls'), {
                 name: urlData.name,
                 original: urlData.original,
@@ -114,6 +162,7 @@ export const useUrlStore = defineStore('url', () => {
                 visits: 0,
                 visitDetails: [] // Array para almacenar detalles de cada visita
             })
+            console.log('⚠️ Store: URL added with ID:', docRef.id);
 
             // Añadir la nueva URL al estado local
             const newUrl = {
@@ -129,17 +178,25 @@ export const useUrlStore = defineStore('url', () => {
             }
 
             urls.value.unshift(newUrl)
+            console.log('⚠️ Store: URL added to local state');
 
             // Comprobar si el dominio ya está en el orden, si no, añadirlo
             const domain = extractDomain(urlData.original);
+            console.log('⚠️ Store: Extracted domain for new URL:', domain);
+            console.log('⚠️ Store: Current domain order:', domainOrder.value);
+            console.log('⚠️ Store: Domain already in order?', domainOrder.value.includes(domain));
+            
             if (!domainOrder.value.includes(domain)) {
+                console.log('⚠️ Store: Adding new domain to order');
                 const newOrder = [domain, ...domainOrder.value];
+                console.log('⚠️ Store: New domain order:', newOrder);
                 await saveDomainOrder(newOrder);
+                console.log('⚠️ Store: Domain order updated with new domain');
             }
 
             return docRef.id
         } catch (e) {
-            console.error('Error al añadir URL:', e)
+            console.error('⚠️ Store: Error al añadir URL:', e)
             error.value = e.message
             return null
         } finally {
@@ -539,23 +596,6 @@ export const useUrlStore = defineStore('url', () => {
         return false;
     }
 
-    // Función para obtener dominios únicos de las URLs
-    function getUniqueDomains() {
-        const domains = new Set();
-
-        urls.value.forEach(url => {
-            try {
-                const domain = extractDomain(url.original);
-                domains.add(domain);
-            } catch (e) {
-                // Si no es una URL válida, ignorarla
-                console.warn('URL inválida al extraer dominio:', url.original);
-            }
-        });
-
-        return Array.from(domains);
-    }
-
     // Función para obtener URLs por dominio
     function getUrlsByDomain(domain) {
         return urls.value.filter(url => {
@@ -598,6 +638,7 @@ export const useUrlStore = defineStore('url', () => {
         saveDomainOrder, // Exponer la función para guardar el orden
         // Helpers de imágenes
         getErrorImageUrl,
-        isLocalImage
+        isLocalImage,
+        extractDomain
     }
 })
