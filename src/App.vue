@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, onUnmounted  } from 'vue';
 import UrlForm from './components/UrlForm.vue';
 import UrlList from './components/UrlList.vue';
 import LoginForm from './components/LoginForm.vue';
@@ -8,13 +8,19 @@ import { useAuthStore } from './stores/auth';
 
 const urlStore = useUrlStore();
 const authStore = useAuthStore();
+let unsubscribeDomainOrder = null;
 
 onMounted(() => {
   console.log("App.vue montado - Inicializando autenticación");
+      unsubscribeDomainOrder = urlStore.listenToDomainOrderChanges();
+
   // Inicializar estado de autenticación
   authStore.init();
 });
-
+onUnmounted(() => {
+    // Limpiar el listener cuando el componente se desmonta
+    if (unsubscribeDomainOrder) unsubscribeDomainOrder();
+});
 // Observar cambios en el estado de autenticación para cargar datos
 watch(() => authStore.isAuthenticated, (isAuthenticated) => {
   console.log("Estado de autenticación cambió:", isAuthenticated);

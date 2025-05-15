@@ -1,9 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { db } from '../config/firebase'
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, getDoc, arrayUnion, setDoc } from 'firebase/firestore'
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, getDoc, arrayUnion, setDoc, onSnapshot } from 'firebase/firestore'
 import useImages from '../composables/useImages'
-
 export const useUrlStore = defineStore('url', () => {
     // Inicializar el composable de imágenes
     const {
@@ -93,42 +92,38 @@ export const useUrlStore = defineStore('url', () => {
         }
     }
 
-    // Nueva función para guardar el orden de dominios con corrección para filtrar undefined/null
+    // Nueva función para guardar el orden de dominios con corrección para filtrar undefined/null// En la función saveDomainOrder del store
     async function saveDomainOrder(newOrder) {
         loading.value = true;
         error.value = null;
         try {
-            console.log('⚠️ Store: saveDomainOrder called with:', newOrder);
-
             // Validar el nuevo orden
             if (!newOrder || !Array.isArray(newOrder) || newOrder.length === 0) {
                 throw new Error('El orden de dominios debe ser un array no vacío');
             }
 
-            // Filtrar valores inválidos
+            // Filtrar valores inválidos (undefined, null, etc.)
             const cleanOrder = newOrder.filter(Boolean);
 
-            // Actualizar Firestore con una escritura directa
+            // Guardar en Firestore
             const settingsRef = doc(db, 'settings', 'domainOrder');
             await setDoc(settingsRef, {
                 order: cleanOrder,
                 updatedAt: new Date()
             });
 
-            // Actualizar el estado local con una nueva referencia
+            // Actualizar estado local
             domainOrder.value = [...cleanOrder];
 
-            console.log('⚠️ Store: Orden guardado y sincronizado correctamente');
             return true;
         } catch (e) {
-            console.error('⚠️ Store: Error al guardar el orden de dominios:', e);
+            console.error('Error al guardar el orden de dominios:', e);
             error.value = e.message;
             return false;
         } finally {
             loading.value = false;
         }
     }
-
     // Añadir logs a la función getUniqueDomains
     function getUniqueDomains() {
         console.log('⚠️ Store: getUniqueDomains called');
@@ -599,6 +594,31 @@ export const useUrlStore = defineStore('url', () => {
         }
         return false;
     }
+    // Dentro del store
+    function listenToDomainOrderChanges() {
+        // Referencia al documento de orden
+        const domainOrderRef = doc(db, 'settings', 'domainOrder');
+
+        // Establecer el listener
+        const unsubscribe = onSnapshot(domainOrderRef, (docSnapshot) => {
+            if (docSnapshot.exists()) {
+                const data = docSnapshot.data();
+                if (data.order && Array.isArray(data.order)) {
+                    console.log('Actualización en tiempo real del orden de dominios:', data.order);
+                    domainOrder.value = [...data.order];
+
+                    // Reordenar localmente los grupos de URLs
+                    // Esto se puede hacer aquí o dejar que el computed de urlsGroupedByDomain lo haga
+                }
+            }
+        }, (error) => {
+            console.error('Error en listener de orden de dominios:', error);
+        });
+
+        // Devolver función para desuscribirse del listener
+        return unsubscribe;
+    }
+
 
     // Función para obtener URLs por dominio
     function getUrlsByDomain(domain) {
@@ -643,6 +663,7 @@ export const useUrlStore = defineStore('url', () => {
         // Helpers de imágenes
         getErrorImageUrl,
         isLocalImage,
-        extractDomain
+        extractDomain,
+        listenToDomainOrderChanges
     }
 })

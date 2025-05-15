@@ -170,6 +170,7 @@ const handleDragEnd = () => {
     dropTargetIndex.value = null;
 };
 
+// En UrlList.vue, función handleDrop mejorada
 const handleDrop = async (index, event) => {
     event.preventDefault();
     
@@ -203,29 +204,19 @@ const handleDrop = async (index, event) => {
         
         console.log('Nuevo orden:', currentOrderCopy);
         
-        // 4. Guardar el nuevo orden en Firestore usando una llamada directa
-        const settingsRef = doc(db, 'settings', 'domainOrder');
-        await setDoc(settingsRef, {
-            order: currentOrderCopy,
-            updatedAt: new Date()
-        });
+        // 4. Guardar el nuevo orden en Firestore
+        await urlStore.saveDomainOrder(currentOrderCopy);
         
-        console.log('Orden guardado directamente en Firestore');
+        console.log('Orden guardado en Firestore y actualizado en el store');
         
-        // 5. Actualizar el store local
-        urlStore.domainOrder = [...currentOrderCopy];
-        
-        // 6. Forzar la actualización de la UI
+        // 5. Para asegurar la sincronización inmediata, forzar la actualización de la UI
         await urlStore.fetchUrls();
         
-        console.log('UI actualizada');
     } catch (error) {
         console.error('ERROR al actualizar el orden:', error);
-        // Intentar mostrar un mensaje de error al usuario
         alert('Error al actualizar el orden de dominios. Por favor, intenta de nuevo.');
     }
 };
-
 const truncateUrl = (url) => {
     return url.length > 40 ? url.substring(0, 37) + '...' : url;
 };
