@@ -88,6 +88,7 @@ export const useUrlStore = defineStore('url', () => {
     }
 
     // Nueva función para guardar el orden de dominios con corrección para filtrar undefined/null
+    // En src/stores/url.js
     async function saveDomainOrder(newOrder) {
         loading.value = true;
         error.value = null;
@@ -97,23 +98,24 @@ export const useUrlStore = defineStore('url', () => {
             // Filtrar valores undefined o null del array
             const cleanOrder = newOrder.filter(item => item !== undefined && item !== null);
             console.log('⚠️ Store: Cleaned order:', cleanOrder);
+
             // Verificar que cleanOrder no esté vacío
             if (!cleanOrder || cleanOrder.length === 0) {
                 const error = new Error('El orden de dominios no puede estar vacío');
                 console.error('⚠️ Store:', error.message);
                 throw error;
             }
-            
+
             // Guardar el orden limpio en Firestore
             console.log('⚠️ Store: Saving domain order to Firestore');
             await setDoc(doc(db, 'settings', 'domainOrder'), {
                 order: cleanOrder,
                 updatedAt: new Date()
-            });
+            }, { merge: true }); // Añadir la opción merge para preservar otros campos
             console.log('⚠️ Store: Domain order saved successfully');
 
             // Actualizar el estado local
-            domainOrder.value = cleanOrder;
+            domainOrder.value = [...cleanOrder]; // Usar spread para crear una nueva referencia
             console.log('⚠️ Store: Local domain order updated:', domainOrder.value);
             return true;
         } catch (e) {
@@ -185,7 +187,7 @@ export const useUrlStore = defineStore('url', () => {
             console.log('⚠️ Store: Extracted domain for new URL:', domain);
             console.log('⚠️ Store: Current domain order:', domainOrder.value);
             console.log('⚠️ Store: Domain already in order?', domainOrder.value.includes(domain));
-            
+
             if (!domainOrder.value.includes(domain)) {
                 console.log('⚠️ Store: Adding new domain to order');
                 const newOrder = [domain, ...domainOrder.value];

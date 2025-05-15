@@ -179,7 +179,6 @@ const handleDragLeave = (event) => {
 
 const handleDrop = async (index, event) => {
     event.preventDefault();
- 
     
     // Resetear dropTargetIndex
     dropTargetIndex.value = null;
@@ -193,52 +192,45 @@ const handleDrop = async (index, event) => {
         return;
     }
     
-    // Verificar que el dominio arrastrado existe en el orden de dominios
-    if (draggedDomain.value && !urlStore.domainOrder.includes(draggedDomain.value)) {
-        const updatedOrder = [...urlStore.domainOrder, draggedDomain.value];
-        await urlStore.saveDomainOrder(updatedOrder);
-        // Actualizar el índice arrastrado
-        draggedIndex.value = updatedOrder.length - 1;
+    // Verificar que tenemos un dominio arrastrado válido
+    if (!draggedDomain.value) {
+        console.error('No hay dominio arrastrado definido');
+        return;
     }
     
-    
-    // Verificar el índice arrastrado una vez más
-    if (draggedIndex.value >= urlStore.domainOrder.length) {
-        draggedIndex.value = urlStore.domainOrder.indexOf(draggedDomain.value);
-        if (draggedIndex.value === -1) {
-            return;
-        }
-    }
-    
-    // Reordenar dominios solo si tenemos un orden válido
-    if (urlStore.domainOrder && Array.isArray(urlStore.domainOrder) && urlStore.domainOrder.length > 0) {
-        const newOrder = [...urlStore.domainOrder];
+    try {
+        // Obtener el orden actual de dominios
+        let currentOrder = [...urlStore.domainOrder];
         
-        // Verificar que el índice de origen está dentro del rango
-        if (draggedIndex.value >= 0 && draggedIndex.value < newOrder.length) {
-            const movedDomain = newOrder.splice(draggedIndex.value, 1)[0];
-            
-            // Verificar que el elemento movido existe
-            if (movedDomain) {
-                // Asegurarse de que el índice de destino es válido
-                const targetIndex = Math.min(index, newOrder.length);
-                newOrder.splice(targetIndex, 0, movedDomain);
-                
-                console.log('⚠️ New domain order:', newOrder);
-                
-                // Guardar el nuevo orden en Firestore
-                try {
-                    await urlStore.saveDomainOrder(newOrder);
-                } catch (error) {
-                }
-                
-                // Actualizar la UI
-                syncDomainGroups();
-            } else {
-            }
-        } else {
+        // Asegurarse de que el dominio arrastrado existe en el orden
+        if (!currentOrder.includes(draggedDomain.value)) {
+            console.log(`Dominio ${draggedDomain.value} no encontrado en el orden, añadiéndolo`);
+            currentOrder.push(draggedDomain.value);
         }
-    } else {
+        
+        // Obtener el índice actual del dominio arrastrado
+        const currentIndex = currentOrder.indexOf(draggedDomain.value);
+        
+        // Remover el dominio de su posición actual
+        currentOrder.splice(currentIndex, 1);
+        
+        // Insertar el dominio en la nueva posición
+        // Si el índice destino es mayor que el origen, tenemos que ajustar 
+        // porque ya removimos un elemento
+        const targetIndex = index > currentIndex ? index - 1 : index;
+        currentOrder.splice(targetIndex, 0, draggedDomain.value);
+        
+        console.log('Nuevo orden de dominios:', currentOrder);
+        
+        // Guardar el nuevo orden en Firestore
+        await urlStore.saveDomainOrder(currentOrder);
+        
+        // Forzar actualización de la UI
+        await urlStore.fetchUrls();
+        
+        console.log('Orden de dominios actualizado con éxito');
+    } catch (error) {
+        console.error('Error al actualizar el orden de dominios:', error);
     }
 };
 const truncateUrl = (url) => {
