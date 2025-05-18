@@ -3,9 +3,13 @@ import { ref } from 'vue';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useUrlStore } from '../stores/url'; // Importamos el store
+import ThemeCustomizerModal from './components/ThemeCustomizerModal.vue'; // Importar el nuevo componente
+import { useThemeStore } from '../stores/theme'; // Importar el store de temas
+
 
 // Obtenemos el store de URLs
 const urlStore = useUrlStore();
+const themeStore = useThemeStore(); // Inicializar el store de temas
 
 // Estados
 const name = ref('');
@@ -76,7 +80,7 @@ const submitForm = async () => {
 </script>
 
 <template>
-  <div class=" shadow rounded-lg p-6 mb-8 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800 ">
+  <div class=" shadow rounded-lg p-6 mb-8 bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-secondary)] ">
     <h2 class="text-xl font-semibold text-gray-800 mb-4 text-white ">Añadir nueva URL</h2>
     <form @submit.prevent="submitForm">
 
