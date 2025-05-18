@@ -77,6 +77,11 @@ const submitForm = async () => {
     isSubmitting.value = false;
   }
 };
+// Función para manejar la actualización del tema
+const handleThemeUpdated = () => {
+  console.log('Tema actualizado correctamente');
+  // Podríamos añadir lógica adicional si es necesario
+};
 </script>
 
 <template>
