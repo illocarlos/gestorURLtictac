@@ -25,21 +25,39 @@ export const useThemeStore = defineStore('theme', () => {
     // Obtener store de autenticación
     const authStore = useAuthStore();
 
-    // Getters
+    // Getters fondo para contenido
     const primaryColor = computed(() => currentTheme.value.primary);
     const secondaryColor = computed(() => currentTheme.value.secondary);
+
+    // Getters fondo secundario para contenido
+    const primaryColor2 = computed(() => currentTheme.value.primary);
+    const secondaryColor2 = computed(() => currentTheme.value.secondary);
+
+    // color botones
     const accentColor = computed(() => currentTheme.value.accent);
     const backgroundColor = computed(() => currentTheme.value.background);
     const textColor = computed(() => currentTheme.value.text);
+
+
+    // color botones2
+    const accentColor2 = computed(() => currentTheme.value.accent);
+    const backgroundColor2 = computed(() => currentTheme.value.background);
+    const textColor2 = computed(() => currentTheme.value.text);
+
 
     // Getter para variables CSS
     const cssVars = computed(() => {
         return {
             '--color-primary': currentTheme.value.primary,
             '--color-secondary': currentTheme.value.secondary,
+            '--color-primary-2': currentTheme.value.primary,
+            '--color-secondary-2': currentTheme.value.secondary,
             '--color-accent': currentTheme.value.accent,
             '--color-background': currentTheme.value.background,
             '--color-text': currentTheme.value.text,
+            '--color-accent-2': currentTheme.value.accent,
+            '--color-background-2': currentTheme.value.background,
+            '--color-text-2': currentTheme.value.text,
         };
     });
 
@@ -252,7 +270,12 @@ export const useThemeStore = defineStore('theme', () => {
         // Getters
         primaryColor,
         secondaryColor,
+        primaryColor2,
+        secondaryColor2,
         accentColor,
+        accentColor2,
+        backgroundColor2,
+        textColor2,
         backgroundColor,
         textColor,
         cssVars,
@@ -265,5 +288,6 @@ export const useThemeStore = defineStore('theme', () => {
         openThemeModal,
         closeThemeModal,
         updateColor
+
     };
 });

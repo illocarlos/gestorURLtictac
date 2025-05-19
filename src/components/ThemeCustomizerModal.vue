@@ -18,6 +18,11 @@ const editingTheme = ref({
   accent: '#BBF33A',
   background: '#F3F4F6',
   text: '#111827',
+    primary2: '#EC4899',
+  secondary2: '#9333EA',
+  accent2: '#BBF33A',
+  background2: '#F3F4F6',
+  text2: '#111827',
   name: ''
 });
 
@@ -146,6 +151,11 @@ const previewStyle = computed(() => {
     '--preview-accent': editingTheme.value.accent,
     '--preview-background': editingTheme.value.background,
     '--preview-text': editingTheme.value.text,
+     '--preview-primary-2': editingTheme.value.primary2,
+    '--preview-secondary-2': editingTheme.value.secondary2,
+    '--preview-accent-2': editingTheme.value.accent2,
+    '--preview-background-2': editingTheme.value.background2,
+    '--preview-text-2': editingTheme.value.text2,
   };
 });
 </script>
@@ -174,7 +184,7 @@ const previewStyle = computed(() => {
         <div class="bg-white rounded-md p-5 shadow-inner mb-4">
           <!-- Sección de colores -->
           <div class="mb-6">
-            <h4 class="text-gray-800 font-medium mb-3">Colores de la Interfaz</h4>
+            <h4 class="text-gray-800 font-medium mb-3">Colores de la Interfaz fondo elementos principal</h4>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Color primario -->
@@ -217,6 +227,156 @@ const previewStyle = computed(() => {
                     type="text"
                     v-model="editingTheme.secondary"
                     @input="updateColor('secondary', $event.target.value)"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="#RRGGBB"
+                  />
+                </div>
+              </div>
+              
+              <!-- Color de acento (botones) -->
+              <div>
+                <h3> customizar boton primario</h3>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Color de Acento (Botones)
+                </label>
+                <div class="flex items-center">
+                  <input
+                    type="color"
+                    v-model="editingTheme.accent"
+                    @input="updateColor('accent', $event.target.value)"
+                    class="w-12 h-12 rounded-md cursor-pointer mr-3"
+                    title="Seleccionar color de acento"
+                  />
+                  <input
+                    type="text"
+                    v-model="editingTheme.accent"
+                    @input="updateColor('accent', $event.target.value)"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="#RRGGBB"
+                  />
+                </div>
+              </div>
+              
+              <!-- Color de fondo -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Color de Fondo
+                </label>
+                <div class="flex items-center">
+                  <input
+                    type="color"
+                    v-model="editingTheme.background"
+                    @input="updateColor('background', $event.target.value)"
+                    class="w-12 h-12 rounded-md cursor-pointer mr-3"
+                    title="Seleccionar color de fondo"
+                  />
+                  <input
+                    type="text"
+                    v-model="editingTheme.background"
+                    @input="updateColor('background', $event.target.value)"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="#RRGGBB"
+                  />
+                </div>
+              </div>
+              
+              <!-- Color de texto -->
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Color de Texto
+                </label>
+                <div class="flex items-center">
+                  <input
+                    type="color"
+                    v-model="editingTheme.text"
+                    @input="updateColor('text', $event.target.value)"
+                    class="w-12 h-12 rounded-md cursor-pointer mr-3"
+                    title="Seleccionar color de texto"
+                  />
+                  <input
+                    type="text"
+                    v-model="editingTheme.text"
+                    @input="updateColor('text', $event.target.value)"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="#RRGGBB"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+     <!-- Color de acento (botones) -->
+              <div>
+                <h3> customizar boton primario</h3>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Color de Acento (Botones)
+                </label>
+                <div class="flex items-center">
+                  <input
+                    type="color"
+                    v-model="editingTheme.accent"
+                    @input="updateColor('accent', $event.target.value)"
+                    class="w-12 h-12 rounded-md cursor-pointer mr-3"
+                    title="Seleccionar color de acento"
+                  />
+                  <input
+                    type="text"
+                    v-model="editingTheme.accent"
+                    @input="updateColor('accent', $event.target.value)"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="#RRGGBB"
+                  />
+                </div>
+              </div>
+              
+
+
+        <!-- Sección de colores -->
+          <div class="mb-6">
+            <h4 class="text-gray-800 font-medium mb-3">Colores de la Interfaz fondo elementos secundario</h4>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Color primario -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Color Primario (Degradado Inicio)
+                </label>
+                <div class="flex items-center">
+                  <input
+                    type="color"
+                    v-model="editingTheme.primary2"
+                    @input="updateColor('primary2', $event.target.value)"
+                    class="w-12 h-12 rounded-md cursor-pointer mr-3"
+                    title="Seleccionar color primario"
+                  />
+                  <input
+                    type="text"
+                    v-model="editingTheme.primary2"
+                    @input="updateColor('primary2', $event.target.value)"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="#RRGGBB"
+                  />
+                </div>
+              </div>
+              
+              <!-- Color secundario -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Color Secundario (Degradado Fin)
+                </label>
+                <div class="flex items-center">
+                  <input
+                    type="color"
+                    v-model="editingTheme.secondary2"
+                    @input="updateColor('secondary2', $event.target.value)"
+                    class="w-12 h-12 rounded-md cursor-pointer mr-3"
+                    title="Seleccionar color secundario"
+                  />
+                  <input
+                    type="text"
+                    v-model="editingTheme.secondary2"
+                    @input="updateColor('secondary2', $event.target.value)"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="#RRGGBB"
                   />
@@ -293,6 +453,11 @@ const previewStyle = computed(() => {
               </div>
             </div>
           </div>
+
+
+
+
+
           
           <!-- Previsualización de tema -->
           <div class="mb-4">
@@ -349,6 +514,12 @@ const previewStyle = computed(() => {
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="text-sm font-medium truncate">{{ theme.name }}</span>
+
+    <div class="flex items-center space-x-1">
+                    <span class="block w-3 h-3 rounded-full" :style="{ backgroundColor: theme.accent2 }"></span>
+                  </div>
+
+
                   <div class="flex items-center space-x-1">
                     <span class="block w-3 h-3 rounded-full" :style="{ backgroundColor: theme.accent }"></span>
                   </div>

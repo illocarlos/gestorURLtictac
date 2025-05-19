@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import useImages from '../composables/useImages';
+import { useThemeStore } from '../stores/theme'; // Importar el store de temas
 
 const props = defineProps({
   isOpen: Boolean,
@@ -18,6 +19,7 @@ const errors = ref([]);
 const previewUrl = ref('');
 const isAddingError = ref(false);
 const isSubmitting = ref(false);
+const themeStore = useThemeStore(); // Inicializar el store de temas
 
 // Función para previsualizar la imagen
 const handleFileChange = (event) => {
@@ -119,7 +121,7 @@ const submitAllErrors = async () => {
   <div v-if="isOpen"
     class="fixed inset-0 bg-black bg-opacity-60 overflow-y-auto h-full w-full flex items-center justify-center z-50 ">
     <div
-      class="relative mx-auto p-5  w-full max-w-xl shadow-lg rounded-md  bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800">
+      class="relative mx-auto p-5  w-full max-w-xl shadow-lg rounded-md  bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-secondary)] ">
       <!-- Botón X para cerrar (arriba a la derecha) -->
       <button @click="emit('close')"
         class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 focus:outline-none button-custom-close ">
@@ -162,6 +164,7 @@ const submitAllErrors = async () => {
             <!-- Botón para añadir error a la lista -->
             <button @click="addErrorToQueue"
               class="w-full mb-2 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800 cursor-pointer transition-all hover:text-black text-white px-4 py-2 rounded-md text-md font-bold"
+              
               :disabled="!newErrorMessage.trim() || isAddingError || uploadingStatus">
               <span v-if="isAddingError || uploadingStatus">
                 {{ uploadingStatus ? 'Subiendo imagen...' : 'Añadiendo...' }}
@@ -187,7 +190,9 @@ const submitAllErrors = async () => {
                       <img :src="error.imageUrl || error.imagePreview" alt="Imagen de error" class="h-20 rounded-md" />
                     </div>
                   </div>
-                  <button @click="removeError(index)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">
+                  <button @click="removeError(index)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0"
+                    :style="{ backgroundColor: themeStore.accentColor, color: themeStore.textColor }"
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                       stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
