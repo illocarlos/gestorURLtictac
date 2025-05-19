@@ -10,9 +10,14 @@ export const useThemeStore = defineStore('theme', () => {
     const defaultTheme = {
         primary: '#EC4899', // Rosa equivalente a pink-600
         secondary: '#9333EA', // Púrpura equivalente a purple-800
+        primary2: '#EC4899', // Rosa equivalente a pink-600
+        secondary2: '#9333EA', // Púrpura equivalente a purple-800
         accent: '#BBF33A', // Verde lima del botón actual
+        accent2: '#BBF33A', // Verde lima del botón actual
         background: '#F3F4F6', // Gris claro para el fondo
+        background2: '#F3F4F6', // Gris claro para el fondo
         text: '#111827', // Color de texto oscuro
+        text2: '#111827', // Color de texto oscuro
         name: 'Default'
     };
 
