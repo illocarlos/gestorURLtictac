@@ -162,9 +162,9 @@ const previewStyle = computed(() => {
 
 <template>
   <div v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-60 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+    class="fixed inset-0 bg-black bg-opacity-60 overflow-y-auto h-full w-full flex items-start justify-center z-50 py-5">
     <div
-      class="relative mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-gradient-to-r"
+      class="relative mx-auto my-5 p-5 border w-full max-w-3xl shadow-lg rounded-md bg-gradient-to-r max-h-[calc(100vh-40px)] overflow-y-auto"
       :style="{
         background: `linear-gradient(to right, ${editingTheme.primary}, ${editingTheme.secondary})`
       }">
@@ -176,12 +176,12 @@ const previewStyle = computed(() => {
         </svg>
       </button>
 
-      <div class="mt-3">
-        <h3 class="text-lg leading-6 font-medium text-white mb-4">
+      <div class="mt-3 overflow-hidden">
+        <h3 class="text-lg leading-6 font-medium text-white mb-4 sticky top-0">
           Personalizar Tema
         </h3>
 
-        <div class="bg-white rounded-md p-5 shadow-inner mb-4">
+        <div class="bg-white rounded-md p-5 shadow-inner mb-4 overflow-y-auto max-h-[70vh]">
           <!-- Sección de colores principales -->
           <div class="mb-6">
             <h4 class="text-gray-800 font-medium mb-3">Colores de la Interfaz - Elementos Principales</h4>
