@@ -512,6 +512,7 @@ const submitErrors = async () => {
             <h2 class="text-xl font-semibold text-white">URLs registradas</h2>
             <div class="flex flex-wrap gap-2">
                 <button @click="loadUrls" :disabled="urlStore.loading"
+                :style="{ backgroundColor: themeStore.accentColor, color: themeStore.textColor }"
                     class="button-custom uppercase font-bold bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed w-full sm:w-auto">
                     {{ urlStore.loading ? 'Cargando...' : 'Actualizar lista' }}
                 </button>

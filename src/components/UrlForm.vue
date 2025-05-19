@@ -107,7 +107,8 @@ const handleThemeUpdated = () => {
       </div>
 
       <button type="submit" :disabled="isSubmitting"
-        class=" w-full button-custom   text-white font-large py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed">
+        class=" w-full button-custom   text-white font-large py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        :style="{ backgroundColor: themeStore.accentColor, color: themeStore.textColor }">
         <span class="text-lg font-bold uppercase " v-if="!isSubmitting">Añadir URL</span>
         <span v-else class="flex items-center justify-center">
           <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
