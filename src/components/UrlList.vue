@@ -564,7 +564,7 @@ const submitErrors = async () => {
                 </div>
                 
                 <!-- Cabecera de dominio con indicadores y toggle -->
-                <div class="domain-header p-3 bg-gradient-to-r from-pink-600 via-pink-700 to-purple-800 text-white flex items-center">
+                <div class="domain-header p-3 bg-gradient-to-r from-[var(--color-primary-2)] via-[var(--color-primary-2)] to-[var(--color-secondary-2)]  flex items-center">
                     <div class="drag-handle mr-2 flex-shrink-0 touch-drag-handle">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
