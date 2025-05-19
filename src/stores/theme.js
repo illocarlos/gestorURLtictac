@@ -35,8 +35,8 @@ export const useThemeStore = defineStore('theme', () => {
     const secondaryColor = computed(() => currentTheme.value.secondary);
 
     // Getters fondo secundario para contenido
-    const primaryColor2 = computed(() => currentTheme.value.primary);
-    const secondaryColor2 = computed(() => currentTheme.value.secondary);
+    const primaryColor2 = computed(() => currentTheme.value.primary2);
+    const secondaryColor2 = computed(() => currentTheme.value.secondary2);
 
     // color botones
     const accentColor = computed(() => currentTheme.value.accent);
@@ -45,9 +45,9 @@ export const useThemeStore = defineStore('theme', () => {
 
 
     // color botones2
-    const accentColor2 = computed(() => currentTheme.value.accent);
-    const backgroundColor2 = computed(() => currentTheme.value.background);
-    const textColor2 = computed(() => currentTheme.value.text);
+    const accentColor2 = computed(() => currentTheme.value.accent2);
+    const backgroundColor2 = computed(() => currentTheme.value.background2);
+    const textColor2 = computed(() => currentTheme.value.text2);
 
 
     // Getter para variables CSS
@@ -62,7 +62,6 @@ export const useThemeStore = defineStore('theme', () => {
             '--color-background-2': currentTheme.value.background2,
             '--color-text': currentTheme.value.text,
             '--color-accent-2': currentTheme.value.accent2,
-            '--color-background-2': currentTheme.value.background2,
             '--color-text-2': currentTheme.value.text2,
         };
     });
