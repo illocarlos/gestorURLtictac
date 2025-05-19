@@ -3,7 +3,6 @@ import { ref } from 'vue';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useUrlStore } from '../stores/url'; // Importamos el store
-import ThemeCustomizerModal from './components/ThemeCustomizerModal.vue'; // Importar el nuevo componente
 import { useThemeStore } from '../stores/theme'; // Importar el store de temas
 
 

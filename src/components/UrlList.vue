@@ -507,7 +507,7 @@ const submitErrors = async () => {
 </script>
 
 <template>
-    <div class="bg-white shadow rounded-lg p-4 sm:p-6 bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-secondary)]">
+    <div class="bg-white shadow rounded-lg p-4 sm:p-6 bg-gradient-to-r from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-secondary)] ">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-4">
             <h2 class="text-xl font-semibold text-white">URLs registradas</h2>
             <div class="flex flex-wrap gap-2">
