@@ -55,14 +55,15 @@ export const useThemeStore = defineStore('theme', () => {
         return {
             '--color-primary': currentTheme.value.primary,
             '--color-secondary': currentTheme.value.secondary,
-            '--color-primary-2': currentTheme.value.primary,
-            '--color-secondary-2': currentTheme.value.secondary,
+            '--color-primary-2': currentTheme.value.primary2,
+            '--color-secondary-2': currentTheme.value.secondary2,
             '--color-accent': currentTheme.value.accent,
             '--color-background': currentTheme.value.background,
+            '--color-background-2': currentTheme.value.background2,
             '--color-text': currentTheme.value.text,
-            '--color-accent-2': currentTheme.value.accent,
-            '--color-background-2': currentTheme.value.background,
-            '--color-text-2': currentTheme.value.text,
+            '--color-accent-2': currentTheme.value.accent2,
+            '--color-background-2': currentTheme.value.background2,
+            '--color-text-2': currentTheme.value.text2,
         };
     });
 
